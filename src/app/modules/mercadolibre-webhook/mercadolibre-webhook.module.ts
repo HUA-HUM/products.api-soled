@@ -4,7 +4,7 @@ import { MercadoLibreWebhookService } from 'src/app/services/webhook/mercadolibr
 import { GetDetailsProductsRepository } from 'src/core/drivers/repositories/meli-api/detailsProducts/GetDetailsProductsRepository';
 import { MeliHttpClient } from 'src/core/drivers/repositories/meli-api/http/MeliHttpClient';
 import { InteranlSoledHttpClient } from 'src/core/drivers/repositories/internal-soled/http/InteranlSoledHttpClient';
-import { UpdateMeliProductFieldRepository } from 'src/core/drivers/repositories/internal-soled/meli-products/update-field/UpdateMeliProductFieldRepository';
+import { PostMeliProductRepository } from 'src/core/drivers/repositories/internal-soled/meli-products/insert/PostMeliProductRepository';
 import { ImportWebHookChanges } from 'src/core/interactors/webhook/importWebHookChanges';
 
 @Module({
@@ -13,7 +13,7 @@ import { ImportWebHookChanges } from 'src/core/interactors/webhook/importWebHook
     MercadoLibreWebhookService,
     ImportWebHookChanges,
     GetDetailsProductsRepository,
-    UpdateMeliProductFieldRepository,
+    PostMeliProductRepository,
     MeliHttpClient,
     InteranlSoledHttpClient,
   ],
