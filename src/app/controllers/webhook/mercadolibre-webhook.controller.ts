@@ -42,14 +42,16 @@ export class MercadoLibreWebhookController {
         topic: 'items',
         resource: '/items/MLA123456789',
         meliItemId: 'MLA123456789',
+        processed: true,
+        ignoredReason: null,
       },
     },
   })
-  receiveWebhook(
+  async receiveWebhook(
     @Body() body: mercadolibreWebhookService.MercadoLibreWebhookPayload = {},
     @Headers() headers: Record<string, string | string[] | undefined>,
     @Req() req: Request,
-  ): mercadolibreWebhookService.MercadoLibreWebhookResult {
+  ): Promise<mercadolibreWebhookService.MercadoLibreWebhookResult> {
     this.logger.log(
       `[MELI-WEBHOOK] Request | ip=${req.ip} userAgent=${this.getHeaderValue(headers['user-agent']) ?? 'unknown'}`,
     );
