@@ -1,10 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
-import {
-  CreateOnCityProductRequest,
-  OnCityCreateProductImage,
-} from 'src/core/entitis/marketplace-api/oncity/CreateProducts/CreateOnCityProduct';
+import { Injectable } from '@nestjs/common';
+import { CreateOnCityProductRequest } from 'src/core/entitis/marketplace-api/oncity/CreateProducts/CreateOnCityProduct';
 import type { InternalMeliProduct } from 'src/core/entitis/internal-soled/meli-products/get/MeliProduct';
-import type { IProcessMarketplaceImagesRepository } from 'src/core/adapters/repositories/image-market/IProcessMarketplaceImagesRepository';
 import { ResolveMeliPackageDimensions } from '../../shared/ResolveMeliPackageDimensions';
 
 const DEFAULT_ONCITY_ACCOUNT = 'solediluminacionyhogar602';
@@ -13,19 +9,16 @@ const DEFAULT_ONCITY_ACCOUNT = 'solediluminacionyhogar602';
 export class BuildOnCityPayload {
   constructor(
     private readonly resolvePackageDimensions: ResolveMeliPackageDimensions,
-    @Inject('IProcessMarketplaceImagesRepository')
-    private readonly imagesRepository: IProcessMarketplaceImagesRepository,
   ) {}
 
-  async execute(params: {
+  execute(params: {
     product: InternalMeliProduct;
     brandId: string;
     categoryIds: string[];
-  }): Promise<CreateOnCityProductRequest> {
+  }): CreateOnCityProductRequest {
     const { product, brandId, categoryIds } = params;
     const name = this.buildName(product.title);
     const externalId = product.sku ?? product.meli_item_id;
-    const images = await this.buildImages(product, externalId);
     const packageDimensions = this.resolvePackageDimensions.execute(product);
 
     return {
@@ -38,7 +31,7 @@ export class BuildOnCityPayload {
       specs: [],
       attributes: [],
       slug: this.buildSlug(product.title),
-      images,
+      images: [],
       skus: [
         {
           externalId,
@@ -52,7 +45,7 @@ export class BuildOnCityPayload {
             length: packageDimensions.length,
           },
           specs: [],
-          images: images.map((image) => image.id),
+          images: [],
         },
       ],
       origin: process.env.ONCITY_VTEX_ACCOUNT ?? DEFAULT_ONCITY_ACCOUNT,
@@ -115,57 +108,5 @@ export class BuildOnCityPayload {
 
   private resolveEan(sku?: string): string {
     return (sku ?? '').trim();
-  }
-
-  private async buildImages(
-    product: InternalMeliProduct,
-    sku: string,
-  ): Promise<OnCityCreateProductImage[]> {
-    const imageUrls = this.extractMeliImageUrls(product.pictures).slice(0, 5);
-
-    if (!imageUrls.length) {
-      throw new Error('ONCITY_IMAGES_NOT_FOUND');
-    }
-
-    const processedImages = await this.imagesRepository.processOnCity({
-      sku,
-      imageUrls,
-    });
-
-    const uploadedImages: OnCityCreateProductImage[] = [];
-
-    processedImages
-      .filter((image) => image.status === 'uploaded')
-      .forEach((image, index) => {
-        const id =
-          image.uploadResponse?.id ?? image.uploadId ?? `${sku}-${index + 1}`;
-        const url = image.uploadResponse?.fullUrl;
-
-        if (!url) {
-          return;
-        }
-
-        uploadedImages.push({
-          id,
-          url,
-          alt: `Imagen ${index + 1}`,
-        });
-      });
-
-    if (!uploadedImages.length) {
-      throw new Error('ONCITY_IMAGE_PROCESSING_EMPTY_RESPONSE');
-    }
-
-    return uploadedImages;
-  }
-
-  private extractMeliImageUrls(images: any[]): string[] {
-    if (!images?.length) {
-      return [];
-    }
-
-    return images
-      .map((image) => image?.secure_url ?? image?.url)
-      .filter((url): url is string => Boolean(url));
   }
 }

@@ -21,6 +21,7 @@ import { GetOnCityBrandsRepository } from 'src/core/drivers/repositories/marketp
 import { CreateOnCityProductsRepository } from 'src/core/drivers/repositories/marketplace-api/oncity/createProducts/CreateOnCityProductsRepository';
 import { GetOncityProductRepository } from 'src/core/drivers/repositories/marketplace-api/oncity/products/get/GetOncityProductRepository';
 import { UpdatePriceRepository } from 'src/core/drivers/repositories/marketplace-api/oncity/products/update-price/UpdatePriceRepository';
+import { UpdateStatusProductRepository } from 'src/core/drivers/repositories/marketplace-api/oncity/products/update-status/UpdateStatusProductRepository';
 import { UpdateStockRepository } from 'src/core/drivers/repositories/marketplace-api/oncity/products/update-stock/UpdateStockRepository';
 import { MatchFravegaCategoryRepository } from 'src/core/drivers/repositories/openAi/MatchFravegaCategoryRepository';
 import { MatchOnCityCategoryRepository } from 'src/core/drivers/repositories/openAi/MatchOnCityCategoryRepository';
@@ -75,6 +76,10 @@ import { ResolveMeliPackageDimensions } from 'src/core/interactors/publisher/sha
     {
       provide: 'IUpdateOnCityStockRepository',
       useClass: UpdateStockRepository,
+    },
+    {
+      provide: 'IUpdateOnCityStatusProductRepository',
+      useClass: UpdateStatusProductRepository,
     },
     {
       provide: 'IGetOnCityBrandsRepository',

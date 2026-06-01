@@ -1,7 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type {
+  IProcessMarketplaceImagesRepository,
+  OnCityProcessedImage,
+} from 'src/core/adapters/repositories/image-market/IProcessMarketplaceImagesRepository';
 import type { ICreateOnCityProductsRepository } from 'src/core/adapters/repositories/marketplace/oncity/CreateProducts/ICreateOnCityProductsRepository';
 import type { IUpdatePriceRepository } from 'src/core/adapters/repositories/marketplace/oncity/products/update-price/IUpdatePriceRepository';
+import type { IUpdateStatusProductRepository } from 'src/core/adapters/repositories/marketplace/oncity/products/update-status/IUpdateStatusProductRepository';
 import type { IUpdateStockRepository } from 'src/core/adapters/repositories/marketplace/oncity/products/update-stock/IUpdateStockRepository';
+import type { OnCityUpdateProductRequest } from 'src/core/entitis/marketplace-api/oncity/products/update-status/OnCityUpdateProductRequest';
+import type { OnCityUpdateProductResponse } from 'src/core/entitis/marketplace-api/oncity/products/update-status/OnCityUpdateProductResponse';
 import type { InternalMeliProduct } from 'src/core/entitis/internal-soled/meli-products/get/MeliProduct';
 import { ResolveOnCityBrand } from './brand/ResolveOnCityBrand';
 import { ResolveOnCityCategory } from './category/ResolveOnCityCategory';
@@ -26,6 +33,12 @@ export class PublishOncityProduct {
 
     @Inject('IUpdateOnCityStockRepository')
     private readonly updateStockRepository: IUpdateStockRepository,
+
+    @Inject('IUpdateOnCityStatusProductRepository')
+    private readonly updateProductRepository: IUpdateStatusProductRepository,
+
+    @Inject('IProcessMarketplaceImagesRepository')
+    private readonly imagesRepository: IProcessMarketplaceImagesRepository,
 
     private readonly resolveCategory: ResolveOnCityCategory,
     private readonly resolveBrand: ResolveOnCityBrand,
@@ -97,6 +110,15 @@ export class PublishOncityProduct {
         );
       }
 
+      if (!product.pictures || product.pictures.length === 0) {
+        return this.buildValidationResult(
+          'skipped',
+          'MISSING_IMAGES',
+          sku,
+          'base_validation',
+        );
+      }
+
       const prices = this.resolvePrices.execute(price);
 
       const categoryCandidates = await this.resolveCategory.executeCandidates(
@@ -132,7 +154,7 @@ export class PublishOncityProduct {
         );
       }
 
-      const payload = await this.buildPayload.execute({
+      const payload = this.buildPayload.execute({
         product,
         brandId,
         categoryIds: [categoryId],
@@ -178,6 +200,53 @@ export class PublishOncityProduct {
         };
       }
 
+      const createdProduct = this.extractCreatedProduct(response.raw);
+
+      if (!createdProduct) {
+        return {
+          status: 'failed',
+          message: 'ONCITY_CREATED_PRODUCT_NOT_FOUND',
+          payload: {
+            request: payload,
+            prices,
+            stock: product.available_quantity,
+          },
+          response,
+        };
+      }
+
+      const imageUrls = this.extractMeliImageUrls(product).slice(0, 5);
+      const processedImages = await this.imagesRepository.processOnCity({
+        sku,
+        imageUrls,
+      });
+      const imageUpdatePayload = this.buildImageUpdatePayload(
+        createdProduct,
+        processedImages,
+      );
+
+      try {
+        await this.updateProductRepository.updateStatus(
+          createdProduct.id,
+          imageUpdatePayload,
+        );
+      } catch (error: any) {
+        return {
+          status: 'failed',
+          message: error?.message || 'ONCITY_IMAGES_UPDATE_FAILED',
+          payload: {
+            request: payload,
+            imageRequest: imageUpdatePayload,
+            prices,
+            stock: product.available_quantity,
+          },
+          response: {
+            create: response,
+            images: error?.body ?? error?.response?.data ?? error,
+          },
+        };
+      }
+
       const skuId = this.extractCreatedSkuId(response.raw);
 
       if (!skuId) {
@@ -186,6 +255,7 @@ export class PublishOncityProduct {
           message: 'ONCITY_CREATED_SKU_ID_NOT_FOUND',
           payload: {
             request: payload,
+            imageRequest: imageUpdatePayload,
             prices,
             stock: product.available_quantity,
           },
@@ -212,12 +282,14 @@ export class PublishOncityProduct {
           message: error?.message || 'ONCITY_PRICE_UPDATE_FAILED',
           payload: {
             request: payload,
+            imageRequest: imageUpdatePayload,
             prices,
             priceRequest: pricePayload,
             stockRequest: stockPayload,
           },
           response: {
             create: response,
+            images: true,
             price: error?.body ?? error?.response?.data ?? error,
           },
         };
@@ -234,12 +306,14 @@ export class PublishOncityProduct {
           message: error?.message || 'ONCITY_STOCK_UPDATE_FAILED',
           payload: {
             request: payload,
+            imageRequest: imageUpdatePayload,
             prices,
             priceRequest: pricePayload,
             stockRequest: stockPayload,
           },
           response: {
             create: response,
+            images: true,
             price: true,
             stock: error?.body ?? error?.response?.data ?? error,
           },
@@ -250,12 +324,14 @@ export class PublishOncityProduct {
         status: 'success',
         payload: {
           request: payload,
+          imageRequest: imageUpdatePayload,
           prices,
           priceRequest: pricePayload,
           stockRequest: stockPayload,
         },
         response: {
           create: response,
+          images: true,
           price: true,
           stock: stockResponse,
         },
@@ -360,6 +436,90 @@ export class PublishOncityProduct {
   private toNumber(value: string | number | null | undefined): number {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private extractMeliImageUrls(product: InternalMeliProduct): string[] {
+    if (!product.pictures?.length) {
+      return [];
+    }
+
+    return product.pictures
+      .map((image) => image.secure_url ?? image.url)
+      .filter((url): url is string => Boolean(url));
+  }
+
+  private extractCreatedProduct(
+    raw: unknown,
+  ): OnCityUpdateProductResponse | null {
+    if (!raw || typeof raw !== 'object') {
+      return null;
+    }
+
+    const product = raw as OnCityUpdateProductResponse;
+
+    if (!product.id || !Array.isArray(product.skus)) {
+      return null;
+    }
+
+    return product;
+  }
+
+  private buildImageUpdatePayload(
+    product: OnCityUpdateProductResponse,
+    processedImages: OnCityProcessedImage[],
+  ): OnCityUpdateProductRequest {
+    const images = processedImages
+      .filter((image) => image.status === 'uploaded')
+      .map((image, index) => {
+        const id =
+          image.uploadResponse?.id ??
+          image.uploadId ??
+          `${product.externalId}-${index + 1}`;
+        const url = image.uploadResponse?.fullUrl;
+
+        if (!url) {
+          return null;
+        }
+
+        return {
+          id,
+          url,
+          alt: `Imagen ${index + 1}`,
+        };
+      })
+      .filter((image): image is { id: string; url: string; alt: string } =>
+        Boolean(image),
+      );
+
+    if (!images.length) {
+      throw new Error('ONCITY_IMAGE_PROCESSING_EMPTY_RESPONSE');
+    }
+
+    return {
+      id: product.id,
+      externalId: product.externalId,
+      status: product.status,
+      name: product.name,
+      description: product.description,
+      brandId: product.brandId,
+      categoryIds: product.categoryIds,
+      specs: product.specs ?? [],
+      attributes: product.attributes ?? [],
+      slug: product.slug,
+      images,
+      skus: product.skus.map((sku) => ({
+        id: sku.id,
+        externalId: sku.externalId,
+        name: sku.name,
+        ean: sku.ean,
+        isActive: sku.isActive,
+        weight: sku.weight,
+        dimensions: sku.dimensions,
+        specs: sku.specs ?? [],
+        images: images.map((image) => image.id),
+      })),
+      origin: product.origin,
+    };
   }
 
   private extractCreatedSkuId(raw: unknown): number | null {
