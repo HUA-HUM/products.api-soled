@@ -1,12 +1,14 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { Injectable } from '@nestjs/common';
 import {
   FravegaCategoryLeaf,
-  IGetFravegaCategoriesTreeRepository
+  IGetFravegaCategoriesTreeRepository,
 } from 'src/core/adapters/repositories/marketplace/fravega/GetCategoriesTree/IGetFravegaCategoriesTreeRepository';
 import { MarketplaceHttpClient } from '../../http/MarketplaceHttpClient';
 
 type CategoriesTreeResponse = {
+  categories?: unknown[];
   fullCategories?: FravegaCategoryLeaf[];
 };
 
@@ -17,8 +19,13 @@ type CachedTree = {
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+@Injectable()
 export class GetFravegaCategoriesTreeRepository implements IGetFravegaCategoriesTreeRepository {
-  private readonly cacheFile = join(process.cwd(), '.cache', 'fravega-categories-tree.json');
+  private readonly cacheFile = join(
+    process.cwd(),
+    '.cache',
+    'fravega-categories-tree.json',
+  );
 
   constructor(private readonly http: MarketplaceHttpClient) {}
 
@@ -29,12 +36,14 @@ export class GetFravegaCategoriesTreeRepository implements IGetFravegaCategories
       return cached.categories;
     }
 
-    const response = await this.http.get<CategoriesTreeResponse>('/fravega/categoriesTree');
+    const response = await this.http.get<CategoriesTreeResponse>(
+      '/fravega/categoriesTree',
+    );
     const categories = response.fullCategories ?? [];
 
     await this.writeCache({
       fetchedAt: new Date().toISOString(),
-      categories
+      categories,
     });
 
     return categories;

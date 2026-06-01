@@ -1,9 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { Injectable } from '@nestjs/common';
 import {
   IGetOnCityCategoriesTreeRepository,
   OnCityCategoryLeaf,
-  OnCityCategoryNode
+  OnCityCategoryNode,
 } from 'src/core/adapters/repositories/marketplace/oncity/GetCategoriesTree/IGetOnCityCategoriesTreeRepository';
 import { GetOnCityCategoriesTreeResponse } from 'src/core/entitis/marketplace-api/oncity/GetCategoriesTree/GetOnCityCategoriesTreeResponse';
 import { MarketplaceHttpClient } from '../../http/MarketplaceHttpClient';
@@ -15,8 +16,13 @@ type CachedTree = {
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
+@Injectable()
 export class GetOnCityCategoriesTreeRepository implements IGetOnCityCategoriesTreeRepository {
-  private readonly cacheFile = join(process.cwd(), '.cache', 'oncity-categories-tree.json');
+  private readonly cacheFile = join(
+    process.cwd(),
+    '.cache',
+    'oncity-categories-tree.json',
+  );
 
   constructor(private readonly http: MarketplaceHttpClient) {}
 
@@ -27,12 +33,14 @@ export class GetOnCityCategoriesTreeRepository implements IGetOnCityCategoriesTr
       return cached.tree;
     }
 
-    const response = await this.http.get<GetOnCityCategoriesTreeResponse>('/oncity/categories/tree');
+    const response = await this.http.get<GetOnCityCategoriesTreeResponse>(
+      '/oncity/categories/tree',
+    );
     const tree = response ?? [];
 
     await this.writeCache({
       fetchedAt: new Date().toISOString(),
-      tree
+      tree,
     });
 
     return tree;
@@ -43,7 +51,10 @@ export class GetOnCityCategoriesTreeRepository implements IGetOnCityCategoriesTr
     return this.flattenLeaves(tree);
   }
 
-  private flattenLeaves(nodes: OnCityCategoryNode[], path: string[] = []): OnCityCategoryLeaf[] {
+  private flattenLeaves(
+    nodes: OnCityCategoryNode[],
+    path: string[] = [],
+  ): OnCityCategoryLeaf[] {
     const leaves: OnCityCategoryLeaf[] = [];
 
     for (const node of nodes) {
@@ -53,7 +64,7 @@ export class GetOnCityCategoriesTreeRepository implements IGetOnCityCategoriesTr
         leaves.push({
           id: node.id,
           name: node.name,
-          path: nextPath
+          path: nextPath,
         });
         continue;
       }

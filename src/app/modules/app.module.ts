@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MeliImportController } from '../controllers/meli-import/MeliImportController';
 import { MercadoLibreWebhookModule } from './mercadolibre-webhook/mercadolibre-webhook.module';
+import { PublisherModule } from './publisher/publisher.module';
 import { ImportAllProdcutsFromMeli } from 'src/core/interactors/import-meli/ImportAllProdcutsFromMeli';
 import { GetItemsId } from 'src/core/drivers/repositories/meli-api/itemsId/GetItemsId';
 import { GetDetailsProductsRepository } from 'src/core/drivers/repositories/meli-api/detailsProducts/GetDetailsProductsRepository';
@@ -14,6 +15,7 @@ import { InteranlSoledHttpClient } from 'src/core/drivers/repositories/internal-
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     MercadoLibreWebhookModule,
+    PublisherModule,
   ],
   controllers: [MeliImportController],
   providers: [

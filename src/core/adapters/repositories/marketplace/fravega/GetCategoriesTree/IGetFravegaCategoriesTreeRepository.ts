@@ -5,6 +5,8 @@ export type FravegaTreeValueOption = {
 
 export type FravegaTreeAttribute = {
   ID?: string;
+  description?: string;
+  groupName?: string;
   id?: string;
   name: string;
   required?: boolean;

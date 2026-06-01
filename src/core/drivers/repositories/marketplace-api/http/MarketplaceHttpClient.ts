@@ -5,7 +5,7 @@ export class MarketplaceHttpClient {
   private readonly client: AxiosInstance;
 
   constructor() {
-    const baseURL = process.env.MARKETPLACE_API_BASE_URL;
+    const baseURL = this.normalizeBaseUrl(process.env.MARKETPLACE_API_BASE_URL);
 
     if (!baseURL) {
       throw new Error('MARKETPLACE_API_BASE_URL is not defined');
@@ -16,9 +16,21 @@ export class MarketplaceHttpClient {
       timeout: 90000,
       headers: {
         'Content-Type': 'application/json',
-        Accept: '*/*'
-      }
+        Accept: '*/*',
+      },
     });
+  }
+
+  private normalizeBaseUrl(baseURL?: string): string | undefined {
+    if (!baseURL) {
+      return undefined;
+    }
+
+    if (baseURL.startsWith('http://marketplace.api.solediluminacion.com')) {
+      return baseURL.replace('http://', 'https://');
+    }
+
+    return baseURL;
   }
 
   /* ======================================
@@ -60,13 +72,25 @@ export class MarketplaceHttpClient {
   /* ======================================
      ERROR HANDLER
   ====================================== */
-  private handleError(method: string, url: string, error: unknown): MarketplaceHttpError {
+  private handleError(
+    method: string,
+    url: string,
+    error: unknown,
+  ): MarketplaceHttpError {
     const err = error as AxiosError;
 
     if (err.response) {
-      return new MarketplaceHttpError(err.response.status, err.response.data, `[MARKETPLACE ${method}] ${url}`);
+      return new MarketplaceHttpError(
+        err.response.status,
+        err.response.data,
+        `[MARKETPLACE ${method}] ${url}`,
+      );
     }
 
-    return new MarketplaceHttpError(500, err.message, `[MARKETPLACE ${method}] ${url}`);
+    return new MarketplaceHttpError(
+      500,
+      err.message,
+      `[MARKETPLACE ${method}] ${url}`,
+    );
   }
 }

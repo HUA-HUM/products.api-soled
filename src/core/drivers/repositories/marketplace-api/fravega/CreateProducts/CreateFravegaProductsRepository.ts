@@ -1,7 +1,9 @@
+import { Injectable } from '@nestjs/common';
 import { ICreateFravegaProductsRepository } from 'src/core/adapters/repositories/marketplace/fravega/CreateProduct/ICreateFravegaProductsRepository';
 import { CreateFravegaProductsResponse } from 'src/core/entitis/marketplace-api/fravega/CreateProducts/CreateFravegaProductsResponse';
 import { MarketplaceHttpClient } from '../../http/MarketplaceHttpClient';
 
+@Injectable()
 export class CreateFravegaProductsRepository implements ICreateFravegaProductsRepository {
   constructor(private readonly http: MarketplaceHttpClient) {}
 
@@ -15,13 +17,13 @@ export class CreateFravegaProductsRepository implements ICreateFravegaProductsRe
       ====================================== */
       return {
         success: true,
-        data: response
+        data: response,
       };
     } catch (error: any) {
       return {
         success: false,
         message: error?.message || 'FRAVEGA_API_ERROR',
-        error
+        error,
       };
     }
   }

@@ -1,9 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { Injectable } from '@nestjs/common';
 import { IGetOnCityBrandsRepository } from 'src/core/adapters/repositories/marketplace/oncity/GetBrand/IGetOnCityBrandsRepository';
 import {
   GetOnCityBrandsResponse,
-  OnCityBrand
+  OnCityBrand,
 } from 'src/core/entitis/marketplace-api/oncity/GetBrand/GetOnCityBrandsResponse';
 import { MarketplaceHttpClient } from '../../http/MarketplaceHttpClient';
 
@@ -15,8 +16,13 @@ type CachedBrands = {
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_LIMIT = 100;
 
+@Injectable()
 export class GetOnCityBrandsRepository implements IGetOnCityBrandsRepository {
-  private readonly cacheFile = join(process.cwd(), '.cache', 'oncity-brands.json');
+  private readonly cacheFile = join(
+    process.cwd(),
+    '.cache',
+    'oncity-brands.json',
+  );
 
   constructor(private readonly http: MarketplaceHttpClient) {}
 
@@ -31,7 +37,7 @@ export class GetOnCityBrandsRepository implements IGetOnCityBrandsRepository {
 
     await this.writeCache({
       fetchedAt: new Date().toISOString(),
-      brands
+      brands,
     });
 
     return brands;
@@ -45,7 +51,9 @@ export class GetOnCityBrandsRepository implements IGetOnCityBrandsRepository {
     const normalized = this.normalize(name);
     const brands = await this.getAll();
 
-    return brands.find(brand => this.normalize(brand.name) === normalized) ?? null;
+    return (
+      brands.find((brand) => this.normalize(brand.name) === normalized) ?? null
+    );
   }
 
   private async fetchAllBrands(): Promise<OnCityBrand[]> {
@@ -53,10 +61,13 @@ export class GetOnCityBrandsRepository implements IGetOnCityBrandsRepository {
     let offset = 0;
 
     while (true) {
-      const response = await this.http.get<GetOnCityBrandsResponse>('/oncity/brands', {
-        limit: DEFAULT_LIMIT,
-        offset
-      });
+      const response = await this.http.get<GetOnCityBrandsResponse>(
+        '/oncity/brands',
+        {
+          limit: DEFAULT_LIMIT,
+          offset,
+        },
+      );
 
       brands.push(...(response.items ?? []));
 
