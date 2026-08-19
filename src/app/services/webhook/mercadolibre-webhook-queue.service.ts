@@ -101,11 +101,11 @@ export class MercadoLibreWebhookQueueService {
     const notificationId = this.getStringOrNull(payload._id);
 
     if (notificationId) {
-      return `meli-webhook:${notificationId}`;
+      return `meli-webhook_${notificationId}`;
     }
 
     const sent = this.getStringOrNull(payload.sent) ?? Date.now();
-    return `meli-webhook:${topic}:${meliItemId}:${sent}`;
+    return `meli-webhook_${topic}_${meliItemId}_${sent}`;
   }
 
   private buildResult(
