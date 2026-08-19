@@ -1,3 +1,6 @@
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
 export class ResolveFravegaPrices {
   execute(price: number) {
     if (!price || price <= 0) {

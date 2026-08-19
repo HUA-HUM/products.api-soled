@@ -16,7 +16,7 @@ export class MercadoLibreWebhookController {
   @ApiOperation({
     summary: 'Recibir webhook de Mercado Libre',
     description:
-      'Endpoint publico para probar la recepcion de notificaciones de Mercado Libre. Por ahora solo recibe, loguea y responde rapido.',
+      'Recibe notificaciones de Mercado Libre, valida datos minimos, encola el evento en BullMQ y responde rapido.',
   })
   @ApiBody({
     required: false,
@@ -42,7 +42,8 @@ export class MercadoLibreWebhookController {
         topic: 'items',
         resource: '/items/MLA123456789',
         meliItemId: 'MLA123456789',
-        processed: true,
+        queued: true,
+        bullmqJobId: 'meli-webhook:abc123',
         ignoredReason: null,
       },
     },

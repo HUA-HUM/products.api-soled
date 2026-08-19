@@ -22,19 +22,28 @@ export type MarketplacePublicationResponse = {
   marketplace: PublisherMarketplace;
   source?: string;
   meliItemId?: string | null;
+  meli_item_id?: string | null;
   externalProductId?: string | null;
+  external_product_id?: string | null;
   externalSku?: string | null;
+  external_sku?: string | null;
   externalUrl?: string | null;
+  external_url?: string | null;
   publicationStatus: PublicationStatus;
+  publication_status?: PublicationStatus;
   syncStatus: PublicationSyncStatus;
+  sync_status?: PublicationSyncStatus;
   title?: string | null;
   description?: string | null;
   brand?: string | null;
   model?: string | null;
   gtin?: string | null;
   categoryId?: string | null;
+  category_id?: string | null;
   categoryName?: string | null;
+  category_name?: string | null;
   categoryPath?: unknown;
+  category_path?: unknown;
   listPrice?: number | null;
   salePrice?: number | null;
   netPrice?: number | null;
@@ -43,10 +52,15 @@ export type MarketplacePublicationResponse = {
   currency?: string;
   thumbnail?: string | null;
   images?: unknown;
+  images_json?: unknown;
   attributes?: unknown;
+  attributes_json?: unknown;
   variations?: unknown;
+  variations_json?: unknown;
   payload?: unknown;
+  payload_json?: unknown;
   lastResponse?: unknown;
+  last_response_json?: unknown;
 };
 
 export type UpsertMarketplacePublicationRequest = Partial<

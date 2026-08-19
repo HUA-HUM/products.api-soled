@@ -37,4 +37,6 @@ export interface OnCityRawProduct {
   AlternateIdValues?: string[] | null;
   SkuSpecifications?: any[] | null;
   ProductSpecifications?: any[] | null;
+  StockKeepingUnitId?: number | string | null;
+  SkuSellers?: Array<Record<string, any>> | null;
 }
