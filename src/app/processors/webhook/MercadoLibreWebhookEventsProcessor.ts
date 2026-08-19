@@ -17,6 +17,8 @@ import type { InternalMeliProduct } from 'src/core/entitis/internal-soled/meli-p
 import type { MarketplacePublicationResponse } from 'src/core/entitis/internal-soled/publisher/MarketplacePublication';
 import { ImportWebHookChanges } from 'src/core/interactors/webhook/importWebHookChanges';
 
+const CANONICAL_LISTING_TYPE_ID = 'gold_special';
+
 @Processor(MELI_WEBHOOK_EVENTS_QUEUE, {
   concurrency: 3,
   lockDuration: 5 * 60 * 1000,
@@ -52,6 +54,14 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
     const newProduct = await this.getMeliProductByMla.getByMla(
       result.meliItemId!,
     );
+
+    if (newProduct.listing_type_id !== CANONICAL_LISTING_TYPE_ID) {
+      this.logger.log(
+        `[MELI-WEBHOOK-WORKER] Skipped non-canonical listing type | meliItemId=${result.meliItemId} sku=${newProduct.sku} listingTypeId=${newProduct.listing_type_id}`,
+      );
+      return;
+    }
+
     const changes = this.detectChanges(oldProduct, newProduct);
 
     if (!changes.length) {
