@@ -7,6 +7,7 @@ import { ResolveFravegaAttributes } from './atributtes/ResolveFravegaAttributes'
 import { ResolveFravegaPrices } from './price/ResolveFravegaPrices';
 import { BuildFravegaPayload } from './payload/BuildFravegaPayload';
 import { ResolveFravegaBrand } from './brand/ResolveFravegaBrand';
+import { ResolveProductDescription } from '../shared/ResolveProductDescription';
 
 export type PublishResult = {
   status: 'success' | 'failed' | 'skipped';
@@ -26,6 +27,7 @@ export class PublishFravegaProduct {
     private readonly resolveAttributes: ResolveFravegaAttributes,
     private readonly resolvePrices: ResolveFravegaPrices,
     private readonly buildPayload: BuildFravegaPayload,
+    private readonly resolveDescription: ResolveProductDescription,
   ) {}
 
   async execute(product: InternalMeliProduct): Promise<PublishResult> {
@@ -86,7 +88,10 @@ export class PublishFravegaProduct {
         );
       }
 
-      if (!product.title || !product.description) {
+      const resolvedDescription =
+        await this.resolveDescription.execute(product);
+
+      if (!product.title || !resolvedDescription) {
         return this.buildValidationResult(
           'skipped',
           'MISSING_TITLE_OR_DESCRIPTION',
@@ -95,11 +100,20 @@ export class PublishFravegaProduct {
           {
             hasTitle: Boolean(product.title),
             hasDescription: Boolean(product.description),
+            aiDescriptionGenerated: Boolean(
+              resolvedDescription &&
+              resolvedDescription !== product.description,
+            ),
           },
         );
       }
 
-      if (!product.pictures || product.pictures.length === 0) {
+      const workingProduct: InternalMeliProduct =
+        resolvedDescription === product.description
+          ? product
+          : { ...product, description: resolvedDescription };
+
+      if (!workingProduct.pictures || workingProduct.pictures.length === 0) {
         return this.buildValidationResult(
           'skipped',
           'MISSING_IMAGES',
@@ -112,7 +126,7 @@ export class PublishFravegaProduct {
        3. CATEGORY
     ====================================== */
       const categoryCandidates = await this.resolveCategory.executeCandidates(
-        product,
+        workingProduct,
         5,
       );
       const categoryId = categoryCandidates[0] ?? null;
@@ -129,7 +143,7 @@ export class PublishFravegaProduct {
       /* ======================================
        4. BRAND
     ====================================== */
-      const brandId = await this.resolveBrand.execute(product);
+      const brandId = await this.resolveBrand.execute(workingProduct);
 
       if (!brandId) {
         return this.buildValidationResult(
@@ -138,7 +152,7 @@ export class PublishFravegaProduct {
           sku,
           'brand_resolution',
           {
-            brand: product.brand ?? null,
+            brand: workingProduct.brand ?? null,
           },
         );
       }
@@ -149,7 +163,7 @@ export class PublishFravegaProduct {
       let resolvedCategoryId = categoryId;
       let attributes = await this.resolveAttributes.execute(
         resolvedCategoryId,
-        product,
+        workingProduct,
       );
 
       if (!attributes && categoryCandidates.length > 1) {
@@ -162,7 +176,7 @@ export class PublishFravegaProduct {
 
           const fallbackAttributes = await this.resolveAttributes.execute(
             fallbackCategoryId,
-            product,
+            workingProduct,
           );
 
           if (fallbackAttributes) {
@@ -215,7 +229,7 @@ export class PublishFravegaProduct {
        7. BUILD PAYLOAD
     ====================================== */
       const payload = await this.buildPayload.execute({
-        product,
+        product: workingProduct,
         categoryId: resolvedCategoryId,
         brandId,
         attributes,

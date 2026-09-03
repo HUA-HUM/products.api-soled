@@ -28,7 +28,9 @@ import { UpdateStockRepository } from 'src/core/drivers/repositories/marketplace
 import { MatchFravegaCategoryRepository } from 'src/core/drivers/repositories/openAi/MatchFravegaCategoryRepository';
 import { MatchOnCityCategoryRepository } from 'src/core/drivers/repositories/openAi/MatchOnCityCategoryRepository';
 import { OpenAIAttributesExtractor } from 'src/core/drivers/repositories/openAi/OpenAIAttributesExtractor';
+import { OpenAIDescriptionGenerator } from 'src/core/drivers/repositories/openAi/OpenAIDescriptionGenerator';
 import { SyncMarketplacePublicationsCatalog } from 'src/core/interactors/import-marketplaces/SyncMarketplacePublicationsCatalog';
+import { ResolveProductDescription } from 'src/core/interactors/publisher/shared/ResolveProductDescription';
 import { ResolveFravegaAttributes } from 'src/core/interactors/publisher/fravega/atributtes/ResolveFravegaAttributes';
 import { ResolveFravegaBrand } from 'src/core/interactors/publisher/fravega/brand/ResolveFravegaBrand';
 import { ResolveFravegaCategory } from 'src/core/interactors/publisher/fravega/category/ResolveFravegaCategory';
@@ -69,6 +71,11 @@ import { ResolveMeliPackageDimensions } from 'src/core/interactors/publisher/sha
     ResolveFravegaAttributes,
     ResolveFravegaPrices,
     BuildFravegaPayload,
+    ResolveProductDescription,
+    {
+      provide: 'IOpenAIDescriptionGenerator',
+      useClass: OpenAIDescriptionGenerator,
+    },
     {
       provide: 'ICreateOnCityProductsRepository',
       useClass: CreateOnCityProductsRepository,

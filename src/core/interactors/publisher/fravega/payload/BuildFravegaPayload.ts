@@ -35,7 +35,9 @@ export class BuildFravegaPayload {
              IDENTIFICACIÓN
           ====================================== */
           ean: this.resolveEan(product.gtin),
-          refId: product.sku ?? product.meli_item_id,
+          refId: this.sanitizeRefId(
+            String(product.sku ?? product.meli_item_id),
+          ),
 
           /* ======================================
              TITLE
@@ -111,11 +113,24 @@ export class BuildFravegaPayload {
   private resolveEan(gtin?: string | null): string {
     const normalized = String(gtin ?? '').trim();
 
-    if (!normalized) {
+    // Fravega rechaza el item si el EAN tiene 13 caracteres o mas
+    // ("El EAN debe ser menor a 13 caracteres"), asi que si el GTIN
+    // de MELI no entra usamos el mismo fallback que cuando no hay GTIN.
+    if (!normalized || normalized.length >= 13) {
       return '00000000';
     }
 
     return normalized;
+  }
+
+  /* ======================================
+     REF ID (SIN TILDES NI CARACTERES ESPECIALES)
+  ====================================== */
+  private sanitizeRefId(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z0-9_-]/g, '');
   }
 
   /* ======================================

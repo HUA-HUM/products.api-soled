@@ -14,6 +14,7 @@ import { ResolveOnCityBrand } from './brand/ResolveOnCityBrand';
 import { ResolveOnCityCategory } from './category/ResolveOnCityCategory';
 import { BuildOnCityPayload } from './payload/BuildOnCityPayload';
 import { ResolveOnCityPrices } from './price/ResolveOnCityPrices';
+import { ResolveProductDescription } from '../shared/ResolveProductDescription';
 
 export type PublishResult = {
   status: 'success' | 'failed' | 'skipped';
@@ -44,6 +45,7 @@ export class PublishOncityProduct {
     private readonly resolveBrand: ResolveOnCityBrand,
     private readonly resolvePrices: ResolveOnCityPrices,
     private readonly buildPayload: BuildOnCityPayload,
+    private readonly resolveDescription: ResolveProductDescription,
   ) {}
 
   async execute(product: InternalMeliProduct): Promise<PublishResult> {
@@ -97,7 +99,10 @@ export class PublishOncityProduct {
         );
       }
 
-      if (!product.title || !product.description) {
+      const resolvedDescription =
+        await this.resolveDescription.execute(product);
+
+      if (!product.title || !resolvedDescription) {
         return this.buildValidationResult(
           'skipped',
           'MISSING_TITLE_OR_DESCRIPTION',
@@ -106,11 +111,20 @@ export class PublishOncityProduct {
           {
             hasTitle: Boolean(product.title),
             hasDescription: Boolean(product.description),
+            aiDescriptionGenerated: Boolean(
+              resolvedDescription &&
+              resolvedDescription !== product.description,
+            ),
           },
         );
       }
 
-      if (!product.pictures || product.pictures.length === 0) {
+      const workingProduct: InternalMeliProduct =
+        resolvedDescription === product.description
+          ? product
+          : { ...product, description: resolvedDescription };
+
+      if (!workingProduct.pictures || workingProduct.pictures.length === 0) {
         return this.buildValidationResult(
           'skipped',
           'MISSING_IMAGES',
@@ -122,7 +136,7 @@ export class PublishOncityProduct {
       const prices = this.resolvePrices.execute(price);
 
       const categoryCandidates = await this.resolveCategory.executeCandidates(
-        product,
+        workingProduct,
         5,
       );
       const categoryId = categoryCandidates[0] ?? null;
@@ -134,13 +148,13 @@ export class PublishOncityProduct {
           sku,
           'category_resolution',
           {
-            meliCategoryId: product.category_id ?? null,
-            categoryPath: product.category_path ?? null,
+            meliCategoryId: workingProduct.category_id ?? null,
+            categoryPath: workingProduct.category_path ?? null,
           },
         );
       }
 
-      const brandId = await this.resolveBrand.execute(product);
+      const brandId = await this.resolveBrand.execute(workingProduct);
 
       if (!brandId) {
         return this.buildValidationResult(
@@ -149,13 +163,13 @@ export class PublishOncityProduct {
           sku,
           'brand_resolution',
           {
-            brand: product.brand ?? null,
+            brand: workingProduct.brand ?? null,
           },
         );
       }
 
       const payload = this.buildPayload.execute({
-        product,
+        product: workingProduct,
         brandId,
         categoryIds: [categoryId],
       });
