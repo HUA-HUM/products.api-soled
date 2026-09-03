@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { PublisherController } from 'src/app/controllers/publisher/PublisherController';
 import { PublisherQueueModule } from 'src/app/modules/publisher-queue/publisher-queue.module';
 import { PublisherRunsProcessor } from 'src/app/processors/publisher/PublisherRunsProcessor';
+import { MarketplacePublicationsSyncProcessor } from 'src/app/processors/marketplace-publications-sync/MarketplacePublicationsSyncProcessor';
+import { MarketplacePublicationsSyncSchedulerService } from 'src/app/services/marketplace-publications-sync/marketplace-publications-sync-scheduler.service';
 import { PublisherService } from 'src/app/services/publisher/publisher.service';
 import { InteranlSoledHttpClient } from 'src/core/drivers/repositories/internal-soled/http/InteranlSoledHttpClient';
 import { MarketplacePublicationRepository } from 'src/core/drivers/repositories/internal-soled/marketplace-publications/MarketplacePublicationRepository';
@@ -47,6 +49,8 @@ import { ResolveMeliPackageDimensions } from 'src/core/interactors/publisher/sha
   providers: [
     PublisherService,
     PublisherRunsProcessor,
+    MarketplacePublicationsSyncProcessor,
+    MarketplacePublicationsSyncSchedulerService,
     CreatePublisherJobRepository,
     GetPublisherJobRepository,
     GetPublisherRunRepository,
