@@ -7,6 +7,7 @@ import { Queue } from 'bullmq';
 import { AppModule } from './app/modules/app.module';
 import {
   MARKETPLACE_CHANGE_ACTIONS_QUEUE,
+  MARKETPLACE_PUBLICATIONS_SYNC_QUEUE,
   MELI_WEBHOOK_EVENTS_QUEUE,
   PUBLISHER_RUNS_QUEUE,
 } from './app/modules/publisher-queue/publisher-queue.constants';
@@ -73,12 +74,19 @@ function setupBullBoard(app: Awaited<ReturnType<typeof NestFactory.create>>) {
       connection,
     },
   );
+  const marketplacePublicationsSyncQueue = new Queue(
+    MARKETPLACE_PUBLICATIONS_SYNC_QUEUE,
+    {
+      connection,
+    },
+  );
 
   createBullBoard({
     queues: [
       new BullMQAdapter(publisherRunsQueue),
       new BullMQAdapter(meliWebhookEventsQueue),
       new BullMQAdapter(marketplaceChangeActionsQueue),
+      new BullMQAdapter(marketplacePublicationsSyncQueue),
     ],
     serverAdapter,
   });
