@@ -3,7 +3,7 @@ import { CreateOnCityProductRequest } from 'src/core/entitis/marketplace-api/onc
 import type { InternalMeliProduct } from 'src/core/entitis/internal-soled/meli-products/get/MeliProduct';
 import { ResolveMeliPackageDimensions } from '../../shared/ResolveMeliPackageDimensions';
 
-const DEFAULT_ONCITY_ACCOUNT = 'solediluminacionyhogar602';
+export const DEFAULT_ONCITY_ACCOUNT = 'solediluminacionyhogar602';
 
 @Injectable()
 export class BuildOnCityPayload {

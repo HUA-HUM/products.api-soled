@@ -9,6 +9,7 @@ import { UpdateStatusProductRepository } from 'src/core/drivers/repositories/mar
 import { UpdateStockRepository } from 'src/core/drivers/repositories/marketplace-api/oncity/products/update-stock/UpdateStockRepository';
 import { ResolveFravegaPrices } from 'src/core/interactors/publisher/fravega/price/ResolveFravegaPrices';
 import { ResolveOnCityPrices } from 'src/core/interactors/publisher/oncity/price/ResolveOnCityPrices';
+import { DEFAULT_ONCITY_ACCOUNT } from 'src/core/interactors/publisher/oncity/payload/BuildOnCityPayload';
 import type { MarketplaceChangeAction } from 'src/core/entitis/internal-soled/marketplace-change-actions/MarketplaceChangeAction';
 import type { MarketplacePublicationResponse } from 'src/core/entitis/internal-soled/publisher/MarketplacePublication';
 import type { OnCityRawProduct } from 'src/core/entitis/marketplace-api/oncity/products/get/OnCityRawProduct';
@@ -226,10 +227,10 @@ export class ProcessMarketplaceChangeAction {
     }
 
     const productId = this.stringOrNull(
-      product?.Id ??
-        product?.ProductId ??
+      product?.ProductId ??
         publication.externalProductId ??
-        publication.external_product_id,
+        publication.external_product_id ??
+        product?.Id,
     );
 
     if (!product || !productId) {
@@ -263,7 +264,7 @@ export class ProcessMarketplaceChangeAction {
       ),
       images: this.resolveOncityImages(product),
       skus: this.resolveOncitySkus(product, publication, active),
-      origin: String(process.env.ONCITY_VTEX_ACCOUNT ?? ''),
+      origin: String(process.env.ONCITY_VTEX_ACCOUNT ?? DEFAULT_ONCITY_ACCOUNT),
     };
   }
 
