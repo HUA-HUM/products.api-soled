@@ -158,12 +158,21 @@ export class ReconcileMeliPublicationsStatus {
     }
 
     const reason = isFulfillment ? 'fulfillment' : meliProduct.status;
+    const pendingPublications = publications.filter(
+      (publication) => !this.isAlreadyPaused(publication),
+    );
 
-    return publications
-      .filter((publication) => !this.isAlreadyPaused(publication))
-      .flatMap((publication) =>
-        this.buildPauseActions(meliProduct, publication, reason),
-      );
+    if (!pendingPublications.length) {
+      return [];
+    }
+
+    this.logger.log(
+      `[MELI-FULFILLMENT-DETECTED] sku=${pendingPublications[0].sku} meliItemId=${meliProduct.meli_item_id} logisticType=${meliProduct.logistic_type} meliStatus=${meliProduct.status} reason=${reason} marketplaces=${pendingPublications.map((publication) => publication.marketplace).join(',')} source=reconciliation`,
+    );
+
+    return pendingPublications.flatMap((publication) =>
+      this.buildPauseActions(meliProduct, publication, reason),
+    );
   }
 
   private isAlreadyPaused(

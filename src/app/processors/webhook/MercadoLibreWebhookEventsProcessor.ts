@@ -79,7 +79,7 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
 
     if (isFulfillment) {
       this.logger.log(
-        `[MELI-WEBHOOK-WORKER] Item is in MELI fulfillment, forcing retailer pause | sku=${newProduct.sku} meliItemId=${result.meliItemId}`,
+        `[MELI-FULFILLMENT-DETECTED] sku=${newProduct.sku} meliItemId=${result.meliItemId} logisticType=${newProduct.logistic_type} source=webhook`,
       );
     }
 

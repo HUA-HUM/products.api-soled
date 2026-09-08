@@ -42,6 +42,28 @@ export class ProcessMarketplaceChangeAction {
   async execute(
     action: MarketplaceChangeAction,
   ): Promise<MarketplaceChangeActionProcessResult> {
+    const isFulfillmentAction = this.isFulfillmentDrivenAction(action);
+
+    if (isFulfillmentAction) {
+      this.logger.log(
+        `[MELI-FULFILLMENT-IMPACT] Impactando pausa por fulfillment | sku=${action.sku} marketplace=${action.marketplace} changeType=${action.changeType} source=${action.source} actionId=${action.actionId}`,
+      );
+    }
+
+    const result = await this.dispatch(action);
+
+    if (isFulfillmentAction) {
+      this.logger.log(
+        `[MELI-FULFILLMENT-IMPACT] Resultado | sku=${action.sku} marketplace=${action.marketplace} changeType=${action.changeType} status=${result.status}${result.reason ? ` reason=${result.reason}` : ''}`,
+      );
+    }
+
+    return result;
+  }
+
+  private async dispatch(
+    action: MarketplaceChangeAction,
+  ): Promise<MarketplaceChangeActionProcessResult> {
     if (action.marketplace === 'oncity') {
       return this.processOncity(action);
     }
@@ -54,6 +76,13 @@ export class ProcessMarketplaceChangeAction {
       status: 'skipped',
       reason: `UNSUPPORTED_MARKETPLACE_${action.marketplace}`,
     };
+  }
+
+  private isFulfillmentDrivenAction(action: MarketplaceChangeAction): boolean {
+    return (
+      action.source === 'meli_fulfillment' ||
+      action.source === 'meli_reconciliation'
+    );
   }
 
   private async processOncity(
