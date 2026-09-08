@@ -16,3 +16,11 @@ export const MARKETPLACE_PUBLICATIONS_SYNC_REPEAT_JOB_ID =
   'marketplace-publications-sync-cron';
 // Cada 2 horas, en punto.
 export const MARKETPLACE_PUBLICATIONS_SYNC_CRON_PATTERN = '0 */2 * * *';
+
+export const MELI_RECONCILIATION_QUEUE = 'meli-status-reconciliation';
+export const MELI_RECONCILIATION_JOB_NAME = 'reconcile-meli-status';
+export const MELI_RECONCILIATION_REPEAT_JOB_ID =
+  'meli-status-reconciliation-cron';
+// Cada 6 horas, en punto. Es un respaldo del guard reactivo del webhook,
+// no hace falta que corra tan seguido como el sync de catalogo.
+export const MELI_RECONCILIATION_CRON_PATTERN = '0 */6 * * *';

@@ -3,12 +3,15 @@ import { MercadoLibreWebhookController } from 'src/app/controllers/webhook/merca
 import { PublisherQueueModule } from 'src/app/modules/publisher-queue/publisher-queue.module';
 import { MarketplaceChangeActionsProcessor } from 'src/app/processors/marketplace-change-actions/MarketplaceChangeActionsProcessor';
 import { MercadoLibreWebhookEventsProcessor } from 'src/app/processors/webhook/MercadoLibreWebhookEventsProcessor';
+import { MeliPublicationsReconciliationProcessor } from 'src/app/processors/reconciliation/MeliPublicationsReconciliationProcessor';
 import { MarketplaceChangeActionsQueueService } from 'src/app/services/marketplace-change-actions/marketplace-change-actions-queue.service';
+import { MeliPublicationsReconciliationSchedulerService } from 'src/app/services/reconciliation/meli-publications-reconciliation-scheduler.service';
 import { MercadoLibreWebhookQueueService } from 'src/app/services/webhook/mercadolibre-webhook-queue.service';
 import { MercadoLibreWebhookService } from 'src/app/services/webhook/mercadolibre-webhook.service';
 import { MarketplaceChangeActionRepository } from 'src/core/drivers/repositories/internal-soled/marketplace-change-actions/MarketplaceChangeActionRepository';
 import { MarketplacePublicationRepository } from 'src/core/drivers/repositories/internal-soled/marketplace-publications/MarketplacePublicationRepository';
 import { GetDetailsProductsRepository } from 'src/core/drivers/repositories/meli-api/detailsProducts/GetDetailsProductsRepository';
+import { GetDetailsProductsBulkRepository } from 'src/core/drivers/repositories/meli-api/detailsProductsBulk/GetDetailsProductsBulkRepository';
 import { MeliHttpClient } from 'src/core/drivers/repositories/meli-api/http/MeliHttpClient';
 import { InteranlSoledHttpClient } from 'src/core/drivers/repositories/internal-soled/http/InteranlSoledHttpClient';
 import { GetMeliProductByMlaRepository } from 'src/core/drivers/repositories/internal-soled/meli-products/get-by-mla/GetMeliProductByMlaRepository';
@@ -24,6 +27,7 @@ import { GetOncityProductRepository } from 'src/core/drivers/repositories/market
 import { ResolveFravegaPrices } from 'src/core/interactors/publisher/fravega/price/ResolveFravegaPrices';
 import { ResolveOnCityPrices } from 'src/core/interactors/publisher/oncity/price/ResolveOnCityPrices';
 import { ProcessMarketplaceChangeAction } from 'src/core/interactors/marketplace-change-actions/ProcessMarketplaceChangeAction';
+import { ReconcileMeliPublicationsStatus } from 'src/core/interactors/reconciliation/ReconcileMeliPublicationsStatus';
 import { ImportWebHookChanges } from 'src/core/interactors/webhook/importWebHookChanges';
 
 @Module({
@@ -35,12 +39,16 @@ import { ImportWebHookChanges } from 'src/core/interactors/webhook/importWebHook
     MarketplaceChangeActionsQueueService,
     MercadoLibreWebhookEventsProcessor,
     MarketplaceChangeActionsProcessor,
+    MeliPublicationsReconciliationProcessor,
+    MeliPublicationsReconciliationSchedulerService,
     ImportWebHookChanges,
     ProcessMarketplaceChangeAction,
+    ReconcileMeliPublicationsStatus,
     MarketplaceChangeActionRepository,
     MarketplacePublicationRepository,
     GetMeliProductByMlaRepository,
     GetDetailsProductsRepository,
+    GetDetailsProductsBulkRepository,
     PostMeliProductRepository,
     UpdatePriceRepository,
     UpdateStockRepository,
