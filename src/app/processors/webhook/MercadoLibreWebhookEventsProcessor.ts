@@ -18,6 +18,8 @@ import type { MarketplacePublicationResponse } from 'src/core/entitis/internal-s
 import { ImportWebHookChanges } from 'src/core/interactors/webhook/importWebHookChanges';
 
 const CANONICAL_LISTING_TYPE_ID = 'gold_special';
+const MELI_FULFILLMENT_LOGISTIC_TYPE = 'fulfillment';
+const FULFILLMENT_PAUSE_SOURCE = 'meli_fulfillment';
 
 @Processor(MELI_WEBHOOK_EVENTS_QUEUE, {
   concurrency: 3,
@@ -62,13 +64,23 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
       return;
     }
 
-    const changes = this.detectChanges(oldProduct, newProduct);
+    const isFulfillment =
+      newProduct.logistic_type === MELI_FULFILLMENT_LOGISTIC_TYPE;
+    const changes = isFulfillment
+      ? this.buildFulfillmentPauseChanges(oldProduct)
+      : this.detectChanges(oldProduct, newProduct);
 
     if (!changes.length) {
       this.logger.log(
         `[MELI-WEBHOOK-WORKER] No marketplace changes detected | meliItemId=${result.meliItemId}`,
       );
       return;
+    }
+
+    if (isFulfillment) {
+      this.logger.log(
+        `[MELI-WEBHOOK-WORKER] Item is in MELI fulfillment, forcing retailer pause | sku=${newProduct.sku} meliItemId=${result.meliItemId}`,
+      );
     }
 
     const publications = await this.marketplacePublications.list({
@@ -81,6 +93,7 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
       oldProduct,
       changes,
       publications.items,
+      isFulfillment ? FULFILLMENT_PAUSE_SOURCE : 'mercadolibre_webhook',
     );
 
     if (!actions.length) {
@@ -176,6 +189,30 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
     return changes;
   }
 
+  private buildFulfillmentPauseChanges(
+    oldProduct: InternalMeliProduct | null,
+  ): Array<{
+    type: MarketplaceChangeActionType;
+    oldValue: any;
+    newValue: any;
+  }> {
+    // MELI ya nos avisa que el item paso a fulfillment (logistic_type), asi
+    // que forzamos pausa + stock 0 en los retailers sin importar que otro
+    // campo haya cambiado o no en este webhook puntual.
+    return [
+      {
+        type: 'status',
+        oldValue: { status: oldProduct?.status ?? null },
+        newValue: { status: 'paused' },
+      },
+      {
+        type: 'stock',
+        oldValue: { stock: oldProduct?.available_quantity ?? null },
+        newValue: { stock: 0 },
+      },
+    ];
+  }
+
   private buildActions(
     newProduct: InternalMeliProduct,
     oldProduct: InternalMeliProduct | null,
@@ -185,6 +222,7 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
       newValue: any;
     }>,
     publications: MarketplacePublicationResponse[],
+    source: string,
   ): CreateMarketplaceChangeAction[] {
     const sku = newProduct.sku;
 
@@ -201,13 +239,13 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
           return {
             actionId: `chg_${Date.now()}_${randomUUID().slice(0, 8)}`,
             dedupeKey: [
-              'mercadolibre_webhook',
+              source,
               sku,
               publication.marketplace,
               change.type,
               dedupeValue,
             ].join(':'),
-            source: 'mercadolibre_webhook',
+            source,
             sku,
             meliItemId: newProduct.meli_item_id ?? oldProduct?.meli_item_id,
             marketplace: publication.marketplace as 'oncity' | 'fravega',

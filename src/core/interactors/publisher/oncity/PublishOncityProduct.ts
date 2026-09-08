@@ -64,6 +64,18 @@ export class PublishOncityProduct {
         );
       }
 
+      if (product.logistic_type === 'fulfillment') {
+        return this.buildValidationResult(
+          'skipped',
+          'MELI_FULFILLMENT',
+          sku,
+          'status_validation',
+          {
+            logisticType: product.logistic_type,
+          },
+        );
+      }
+
       const price = this.toNumber(product.price);
 
       if (!price || price <= 0) {

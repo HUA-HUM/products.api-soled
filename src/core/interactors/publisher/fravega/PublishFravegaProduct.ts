@@ -49,6 +49,18 @@ export class PublishFravegaProduct {
         );
       }
 
+      if (product.logistic_type === 'fulfillment') {
+        return this.buildValidationResult(
+          'skipped',
+          'MELI_FULFILLMENT',
+          sku,
+          'meli_status_validation',
+          {
+            logisticType: product.logistic_type,
+          },
+        );
+      }
+
       /* ======================================
        2.6 VALIDACIONES BASE
     ====================================== */
