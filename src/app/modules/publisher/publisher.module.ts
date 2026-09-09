@@ -35,6 +35,8 @@ import { ResolveProductDescription } from 'src/core/interactors/publisher/shared
 import { MarketplaceChangeActionRepository } from 'src/core/drivers/repositories/internal-soled/marketplace-change-actions/MarketplaceChangeActionRepository';
 import { GetDetailsProductsBulkRepository } from 'src/core/drivers/repositories/meli-api/detailsProductsBulk/GetDetailsProductsBulkRepository';
 import { MeliHttpClient } from 'src/core/drivers/repositories/meli-api/http/MeliHttpClient';
+import { ProcessRunsRepository } from 'src/core/drivers/repositories/internal-soled/process-runs/ProcessRunsRepository';
+import { TrackProcessRun } from 'src/core/interactors/shared/TrackProcessRun';
 import { MarketplaceChangeActionsQueueService } from 'src/app/services/marketplace-change-actions/marketplace-change-actions-queue.service';
 import { ResolveFravegaAttributes } from 'src/core/interactors/publisher/fravega/atributtes/ResolveFravegaAttributes';
 import { ResolveFravegaBrand } from 'src/core/interactors/publisher/fravega/brand/ResolveFravegaBrand';
@@ -68,6 +70,8 @@ import { ResolveMeliPackageDimensions } from 'src/core/interactors/publisher/sha
     MarketplaceChangeActionsQueueService,
     GetDetailsProductsBulkRepository,
     MeliHttpClient,
+    ProcessRunsRepository,
+    TrackProcessRun,
     ProcessPublisherRun,
     ResolveMeliPackageDimensions,
     PublishOncityProduct,

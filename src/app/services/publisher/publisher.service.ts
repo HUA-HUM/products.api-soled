@@ -83,10 +83,10 @@ export class PublisherService {
   async syncMarketplacePublications(
     input: SyncMarketplacePublicationsCatalogInput,
   ): Promise<SyncMarketplacePublicationsCatalogSummary> {
-    return this.syncMarketplacePublicationsCatalog.execute(input);
+    return this.syncMarketplacePublicationsCatalog.execute(input, 'manual');
   }
 
   async runMeliReconciliation(): Promise<ReconcileMeliPublicationsStatusSummary> {
-    return this.reconcileMeliPublicationsStatus.execute();
+    return this.reconcileMeliPublicationsStatus.execute('manual');
   }
 }

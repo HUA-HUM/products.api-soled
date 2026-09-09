@@ -29,6 +29,8 @@ import { ResolveOnCityPrices } from 'src/core/interactors/publisher/oncity/price
 import { ProcessMarketplaceChangeAction } from 'src/core/interactors/marketplace-change-actions/ProcessMarketplaceChangeAction';
 import { ReconcileMeliPublicationsStatus } from 'src/core/interactors/reconciliation/ReconcileMeliPublicationsStatus';
 import { ImportWebHookChanges } from 'src/core/interactors/webhook/importWebHookChanges';
+import { ProcessRunsRepository } from 'src/core/drivers/repositories/internal-soled/process-runs/ProcessRunsRepository';
+import { TrackProcessRun } from 'src/core/interactors/shared/TrackProcessRun';
 
 @Module({
   imports: [PublisherQueueModule],
@@ -44,6 +46,8 @@ import { ImportWebHookChanges } from 'src/core/interactors/webhook/importWebHook
     ImportWebHookChanges,
     ProcessMarketplaceChangeAction,
     ReconcileMeliPublicationsStatus,
+    ProcessRunsRepository,
+    TrackProcessRun,
     MarketplaceChangeActionRepository,
     MarketplacePublicationRepository,
     GetMeliProductByMlaRepository,

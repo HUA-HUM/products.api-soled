@@ -25,7 +25,10 @@ export class MarketplacePublicationsSyncProcessor extends WorkerHost {
       `[MARKETPLACE-PUBLICATIONS-SYNC] Barrido de catalogo iniciado | jobId=${job.id}`,
     );
 
-    const summary = await this.syncMarketplacePublicationsCatalog.execute();
+    const summary = await this.syncMarketplacePublicationsCatalog.execute(
+      {},
+      'cron',
+    );
 
     for (const marketplaceSummary of summary.marketplaces) {
       this.logger.log(

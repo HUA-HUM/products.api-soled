@@ -4,12 +4,15 @@ import { MarketplaceChangeActionsQueueService } from 'src/app/services/marketpla
 import { MarketplaceChangeActionRepository } from 'src/core/drivers/repositories/internal-soled/marketplace-change-actions/MarketplaceChangeActionRepository';
 import { MarketplacePublicationRepository } from 'src/core/drivers/repositories/internal-soled/marketplace-publications/MarketplacePublicationRepository';
 import { GetDetailsProductsBulkRepository } from 'src/core/drivers/repositories/meli-api/detailsProductsBulk/GetDetailsProductsBulkRepository';
+import { TrackProcessRun } from 'src/core/interactors/shared/TrackProcessRun';
 import type { CreateMarketplaceChangeAction } from 'src/core/entitis/internal-soled/marketplace-change-actions/MarketplaceChangeAction';
 import type { GetDetailsProductsResponse } from 'src/core/entitis/meli-api/detailsProducts/GetDetailsProductsResponse';
 import type { GetDetailsProductsBulkResponse } from 'src/core/entitis/meli-api/detailsProductsBulk/GetDetailsProductsBulkResponse';
 import type { MarketplacePublicationResponse } from 'src/core/entitis/internal-soled/publisher/MarketplacePublication';
 import type { PublisherMarketplace } from 'src/core/entitis/internal-soled/publisher/PublisherJob';
+import type { ProcessRunTriggerType } from 'src/core/entitis/internal-soled/process-runs/ProcessRun';
 
+const PROCESS_NAME = 'meli_reconciliation';
 const RECONCILIATION_SOURCE = 'meli_reconciliation';
 const FULFILLMENT_LOGISTIC_TYPE = 'fulfillment';
 const PUBLISHED_STATUS = 'published';
@@ -42,9 +45,18 @@ export class ReconcileMeliPublicationsStatus {
     private readonly getDetailsProductsBulk: GetDetailsProductsBulkRepository,
     private readonly changeActions: MarketplaceChangeActionRepository,
     private readonly changeActionsQueue: MarketplaceChangeActionsQueueService,
+    private readonly trackProcessRun: TrackProcessRun,
   ) {}
 
-  async execute(): Promise<ReconcileMeliPublicationsStatusSummary> {
+  async execute(
+    triggerType: ProcessRunTriggerType = 'manual',
+  ): Promise<ReconcileMeliPublicationsStatusSummary> {
+    return this.trackProcessRun.run(PROCESS_NAME, triggerType, () =>
+      this.runReconciliation(),
+    );
+  }
+
+  private async runReconciliation(): Promise<ReconcileMeliPublicationsStatusSummary> {
     const publications = await this.fetchActivePublications();
     const publicationsByMla = this.groupByMeliItemId(publications);
     const meliItemIds = [...publicationsByMla.keys()];

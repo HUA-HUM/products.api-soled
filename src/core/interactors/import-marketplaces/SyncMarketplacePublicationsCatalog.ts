@@ -10,6 +10,10 @@ import type {
   PublicationStatus,
   UpsertMarketplacePublicationRequest,
 } from 'src/core/entitis/internal-soled/publisher/MarketplacePublication';
+import { TrackProcessRun } from 'src/core/interactors/shared/TrackProcessRun';
+import type { ProcessRunTriggerType } from 'src/core/entitis/internal-soled/process-runs/ProcessRun';
+
+const PROCESS_NAME = 'marketplace_publications_sync';
 
 type SupportedMarketplace = 'oncity' | 'fravega';
 
@@ -43,10 +47,20 @@ export class SyncMarketplacePublicationsCatalog {
     private readonly getOncityProducts: GetOncityProductRepository,
     private readonly getFravegaProducts: GetFravegaProductsRepository,
     private readonly marketplacePublication: MarketplacePublicationRepository,
+    private readonly trackProcessRun: TrackProcessRun,
   ) {}
 
   async execute(
     input: SyncMarketplacePublicationsCatalogInput = {},
+    triggerType: ProcessRunTriggerType = 'manual',
+  ): Promise<SyncMarketplacePublicationsCatalogSummary> {
+    return this.trackProcessRun.run(PROCESS_NAME, triggerType, () =>
+      this.runSync(input),
+    );
+  }
+
+  private async runSync(
+    input: SyncMarketplacePublicationsCatalogInput,
   ): Promise<SyncMarketplacePublicationsCatalogSummary> {
     const marketplaces = input.marketplaces?.length
       ? input.marketplaces

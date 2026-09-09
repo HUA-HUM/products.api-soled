@@ -25,7 +25,7 @@ export class MeliPublicationsReconciliationProcessor extends WorkerHost {
       `[MELI-RECONCILIATION] Barrido de estado iniciado | jobId=${job.id}`,
     );
 
-    const summary = await this.reconcileMeliPublicationsStatus.execute();
+    const summary = await this.reconcileMeliPublicationsStatus.execute('cron');
 
     if (summary.meliLookupErrors > 0) {
       this.logger.warn(
