@@ -12,12 +12,14 @@ import type { PublisherMarketplace } from 'src/core/entitis/internal-soled/publi
 
 const RECONCILIATION_SOURCE = 'meli_reconciliation';
 const FULFILLMENT_LOGISTIC_TYPE = 'fulfillment';
-const MELI_BULK_CHUNK_SIZE = 20;
-const PUBLICATION_PAGE_SIZE = 200;
-const RECONCILIABLE_MARKETPLACES: PublisherMarketplace[] = [
+const PUBLISHED_STATUS = 'published';
+// Mismo tamano de lote que ya usa ImportAllProdcutsFromMeli contra el mismo
+// endpoint bulk de MELI (probado en produccion); no asumir un limite propio.
+const MELI_BULK_CHUNK_SIZE = 10;
+const RECONCILIABLE_MARKETPLACES = new Set<PublisherMarketplace>([
   'oncity',
   'fravega',
-];
+]);
 
 export type ReconcileMeliPublicationsStatusSummary = {
   publicationsChecked: number;
@@ -59,6 +61,13 @@ export class ReconcileMeliPublicationsStatus {
           itemIds: idsChunk,
         });
         meliProducts = this.normalizeBulkResponse(response);
+        const notFound = this.normalizeBulkNotFound(response);
+
+        if (notFound.length) {
+          this.logger.warn(
+            `[MELI-RECONCILIATION] MLA no encontrado por MELI, se omite | itemIds=${notFound.join(',')}`,
+          );
+        }
       } catch (error) {
         meliLookupErrors += idsChunk.length;
         this.logger.warn(
@@ -98,30 +107,23 @@ export class ReconcileMeliPublicationsStatus {
   private async fetchActivePublications(): Promise<
     MarketplacePublicationResponse[]
   > {
-    const publications: MarketplacePublicationResponse[] = [];
+    // GET /internal/marketplace-publications solo filtra por sku (y no
+    // pagina): sin sku devuelve la tabla entera. Pedirle marketplace/status
+    // aca no hace nada del lado del servidor, asi que traemos todo en una
+    // sola llamada y filtramos en memoria en vez de asumir soporte de
+    // filtros/paginacion que hoy no existe (evita loop infinito).
+    const page = await this.marketplacePublications.list();
 
-    for (const marketplace of RECONCILIABLE_MARKETPLACES) {
-      let offset = 0;
+    return page.items.filter((publication) => {
+      const marketplace = publication.marketplace;
+      const status =
+        publication.publicationStatus ?? publication.publication_status;
 
-      while (true) {
-        const page = await this.marketplacePublications.list({
-          marketplace,
-          status: 'published',
-          limit: PUBLICATION_PAGE_SIZE,
-          offset,
-        });
-
-        publications.push(...page.items);
-
-        if (page.items.length < PUBLICATION_PAGE_SIZE) {
-          break;
-        }
-
-        offset += PUBLICATION_PAGE_SIZE;
-      }
-    }
-
-    return publications;
+      return (
+        RECONCILIABLE_MARKETPLACES.has(marketplace) &&
+        status === PUBLISHED_STATUS
+      );
+    });
   }
 
   private groupByMeliItemId(
@@ -296,6 +298,16 @@ export class ReconcileMeliPublicationsStatus {
       response.results ??
       []
     );
+  }
+
+  private normalizeBulkNotFound(
+    response: GetDetailsProductsBulkResponse,
+  ): string[] {
+    if (Array.isArray(response)) {
+      return [];
+    }
+
+    return Array.isArray(response.notFound) ? response.notFound : [];
   }
 
   private chunk<T>(items: T[], size: number): T[][] {
