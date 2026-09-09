@@ -30,7 +30,12 @@ import { MatchOnCityCategoryRepository } from 'src/core/drivers/repositories/ope
 import { OpenAIAttributesExtractor } from 'src/core/drivers/repositories/openAi/OpenAIAttributesExtractor';
 import { OpenAIDescriptionGenerator } from 'src/core/drivers/repositories/openAi/OpenAIDescriptionGenerator';
 import { SyncMarketplacePublicationsCatalog } from 'src/core/interactors/import-marketplaces/SyncMarketplacePublicationsCatalog';
+import { ReconcileMeliPublicationsStatus } from 'src/core/interactors/reconciliation/ReconcileMeliPublicationsStatus';
 import { ResolveProductDescription } from 'src/core/interactors/publisher/shared/ResolveProductDescription';
+import { MarketplaceChangeActionRepository } from 'src/core/drivers/repositories/internal-soled/marketplace-change-actions/MarketplaceChangeActionRepository';
+import { GetDetailsProductsBulkRepository } from 'src/core/drivers/repositories/meli-api/detailsProductsBulk/GetDetailsProductsBulkRepository';
+import { MeliHttpClient } from 'src/core/drivers/repositories/meli-api/http/MeliHttpClient';
+import { MarketplaceChangeActionsQueueService } from 'src/app/services/marketplace-change-actions/marketplace-change-actions-queue.service';
 import { ResolveFravegaAttributes } from 'src/core/interactors/publisher/fravega/atributtes/ResolveFravegaAttributes';
 import { ResolveFravegaBrand } from 'src/core/interactors/publisher/fravega/brand/ResolveFravegaBrand';
 import { ResolveFravegaCategory } from 'src/core/interactors/publisher/fravega/category/ResolveFravegaCategory';
@@ -58,6 +63,11 @@ import { ResolveMeliPackageDimensions } from 'src/core/interactors/publisher/sha
     GetPublisherRunRepository,
     UpdatePublisherRunRepository,
     SyncMarketplacePublicationsCatalog,
+    ReconcileMeliPublicationsStatus,
+    MarketplaceChangeActionRepository,
+    MarketplaceChangeActionsQueueService,
+    GetDetailsProductsBulkRepository,
+    MeliHttpClient,
     ProcessPublisherRun,
     ResolveMeliPackageDimensions,
     PublishOncityProduct,

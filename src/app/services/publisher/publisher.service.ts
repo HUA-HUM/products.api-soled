@@ -8,6 +8,10 @@ import {
   SyncMarketplacePublicationsCatalogInput,
   SyncMarketplacePublicationsCatalogSummary,
 } from 'src/core/interactors/import-marketplaces/SyncMarketplacePublicationsCatalog';
+import {
+  ReconcileMeliPublicationsStatus,
+  ReconcileMeliPublicationsStatusSummary,
+} from 'src/core/interactors/reconciliation/ReconcileMeliPublicationsStatus';
 import type {
   CreatePublisherJobRequest,
   CreatePublisherJobResponse,
@@ -27,6 +31,7 @@ export class PublisherService {
     private readonly updatePublisherRun: UpdatePublisherRunRepository,
     private readonly publisherQueue: PublisherQueueService,
     private readonly syncMarketplacePublicationsCatalog: SyncMarketplacePublicationsCatalog,
+    private readonly reconcileMeliPublicationsStatus: ReconcileMeliPublicationsStatus,
   ) {}
 
   async createJob(
@@ -79,5 +84,9 @@ export class PublisherService {
     input: SyncMarketplacePublicationsCatalogInput,
   ): Promise<SyncMarketplacePublicationsCatalogSummary> {
     return this.syncMarketplacePublicationsCatalog.execute(input);
+  }
+
+  async runMeliReconciliation(): Promise<ReconcileMeliPublicationsStatusSummary> {
+    return this.reconcileMeliPublicationsStatus.execute();
   }
 }

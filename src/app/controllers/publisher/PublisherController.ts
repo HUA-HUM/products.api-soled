@@ -17,6 +17,7 @@ import type {
 } from 'src/core/entitis/internal-soled/publisher/PublisherJob';
 import type { RetryPublisherRunResponse } from 'src/core/entitis/internal-soled/publisher/PublisherRun';
 import type { SyncMarketplacePublicationsCatalogSummary } from 'src/core/interactors/import-marketplaces/SyncMarketplacePublicationsCatalog';
+import type { ReconcileMeliPublicationsStatusSummary } from 'src/core/interactors/reconciliation/ReconcileMeliPublicationsStatus';
 import { CreatePublisherJobDto } from './dto/CreatePublisherJobDto';
 import { SyncMarketplacePublicationsCatalogDto } from './dto/SyncMarketplacePublicationsCatalogDto';
 
@@ -142,6 +143,27 @@ export class PublisherController {
     @Body() body: SyncMarketplacePublicationsCatalogDto = {},
   ): Promise<SyncMarketplacePublicationsCatalogSummary> {
     return this.publisherService.syncMarketplacePublications(body);
+  }
+
+  @Post('meli-reconciliation/run')
+  @ApiOperation({
+    summary: 'Ejecutar manualmente la reconciliacion de estado con MELI',
+    description:
+      'Revisa cada SKU publicado en Fravega/OnCity contra el estado en vivo de MELI y fuerza pausa + stock 0 si el item esta inactivo o en fulfillment. Es el mismo proceso que corre solo cada 6 horas.',
+  })
+  @ApiOkResponse({
+    description: 'Resumen de la reconciliacion ejecutada.',
+    schema: {
+      example: {
+        publicationsChecked: 340,
+        meliItemsChecked: 210,
+        correctionsQueued: 4,
+        meliLookupErrors: 0,
+      },
+    },
+  })
+  async runMeliReconciliation(): Promise<ReconcileMeliPublicationsStatusSummary> {
+    return this.publisherService.runMeliReconciliation();
   }
 
   private parseNumber(value: string | undefined): number | undefined {
