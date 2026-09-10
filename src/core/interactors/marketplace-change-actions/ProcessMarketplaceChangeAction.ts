@@ -267,6 +267,17 @@ export class ProcessMarketplaceChangeAction {
       return null;
     }
 
+    if (
+      !this.hasValidOncitySpecShape(product.ProductSpecifications) ||
+      !this.hasValidOncitySpecShape(product.SkuSpecifications)
+    ) {
+      this.logger.warn(
+        `[MARKETPLACE-CHANGE] OnCity ProductSpecifications/SkuSpecifications en un formato no reconocido (no son objetos {Name, Value}) | sku=${action.sku} skuId=${skuId}. Se omite el status update para no mandar un payload invalido a un PUT que reemplaza el producto entero (podria borrar specs reales).`,
+      );
+
+      return null;
+    }
+
     const active = this.mapActiveStatus(action.newValue.status);
     const resolvedImages = this.resolveOncityImages(product);
 
@@ -440,6 +451,27 @@ export class ProcessMarketplaceChangeAction {
 
   private arrayOrEmpty(value: unknown): any[] {
     return Array.isArray(value) ? value : [];
+  }
+
+  // OnCity devuelve 400 ModelStateInvalidException si mandamos specs/attributes
+  // que no sean objetos {Name, Value} (ej. VTEX a veces trae ProductSpecifications
+  // como array de strings sueltos). No hay forma segura de adivinar el mapeo sin
+  // corromper specs reales del producto, asi que solo dejamos pasar shapes ya
+  // validos (o vacios).
+  private hasValidOncitySpecShape(items: unknown): boolean {
+    const arr = this.arrayOrEmpty(items);
+
+    if (!arr.length) {
+      return true;
+    }
+
+    return arr.every(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        'Name' in item &&
+        'Value' in item,
+    );
   }
 
   private stringOrNull(value: unknown): string | null {
