@@ -178,11 +178,12 @@ export class ProcessMarketplaceChangeAction {
   private async processFravega(
     action: MarketplaceChangeAction,
   ): Promise<MarketplaceChangeActionProcessResult> {
-    const publication = await this.getFreshPublication(action);
-    const refId =
-      this.getPublicationExternalSku(publication) ??
-      action.externalSku ??
-      action.sku;
+    // El refId que reconocen los endpoints /fravega/*/refId/... es el que
+    // nosotros mismos seteamos al publicar (nuestro sku, sanitizado en
+    // BuildFravegaPayload). publication.externalSku es el SKU INTERNO de
+    // Fravega (otro campo), no el refId; usarlo aca devuelve 404
+    // ref_id_not_found en todas las actualizaciones de precio/stock/status.
+    const refId = action.sku;
 
     if (action.changeType === 'price') {
       const price = this.getNumber(action.newValue.price);
@@ -267,6 +268,7 @@ export class ProcessMarketplaceChangeAction {
     }
 
     const active = this.mapActiveStatus(action.newValue.status);
+    const resolvedImages = this.resolveOncityImages(product);
 
     return {
       id: productId,
@@ -291,8 +293,8 @@ export class ProcessMarketplaceChangeAction {
           publication.external_url ??
           '',
       ),
-      images: this.resolveOncityImages(product),
-      skus: this.resolveOncitySkus(product, publication, active),
+      images: resolvedImages,
+      skus: this.resolveOncitySkus(product, publication, active, resolvedImages),
       origin: String(process.env.ONCITY_VTEX_ACCOUNT ?? DEFAULT_ONCITY_ACCOUNT),
     };
   }
@@ -339,6 +341,7 @@ export class ProcessMarketplaceChangeAction {
     product: OnCityRawProduct,
     publication: MarketplacePublicationResponse,
     active: boolean,
+    resolvedImages: OnCityUpdateProductRequest['images'],
   ): OnCityUpdateProductRequest['skus'] {
     const dimension = this.toRecord(product.Dimension) ?? {};
     const skuSellers = this.arrayOrEmpty(product.SkuSellers);
@@ -367,11 +370,11 @@ export class ProcessMarketplaceChangeAction {
           length: Number(dimension.length ?? 1),
         },
         specs: this.arrayOrEmpty(product.SkuSpecifications),
-        images: this.arrayOrEmpty(product.Images)
-          .map((image: Record<string, any>) =>
-            this.stringOrNull(image.id ?? image.FileId ?? image.ImageName),
-          )
-          .filter(Boolean) as string[],
+        // Tiene que referenciar los MISMOS ids que declaramos en el array
+        // `images` del producto (arriba); antes se recalculaban con otro
+        // fallback (ImageName, ej. "Imagen 1") y OnCity rechazaba el update
+        // entero con ImageIdNotFoundException al no reconocer esos ids.
+        images: resolvedImages.map((image) => image.id),
       },
       ...skuSellers.slice(1).map((sku: Record<string, any>) => ({
         id: String(sku.StockKeepingUnitId),
