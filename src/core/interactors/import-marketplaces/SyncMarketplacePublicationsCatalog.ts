@@ -154,11 +154,17 @@ export class SyncMarketplacePublicationsCatalog {
 
       for (const product of products) {
         try {
-          const sku = product.refId ?? product.sku;
+          if (!product.refId) {
+            summary.errors.push({
+              sku: product.sku,
+              message: `Fravega no devolvio refId en el listado (fravegaId=${product.id}, fravegaSku=${product.sku}); se omite para no guardar la publicacion bajo el id interno de Fravega en vez del SKU real`,
+            });
+            continue;
+          }
 
           await this.marketplacePublication.upsert(
             'fravega',
-            sku,
+            product.refId,
             this.mapFravegaPublication(product),
           );
 
