@@ -12,6 +12,11 @@ import {
   ReconcileMeliPublicationsStatus,
   ReconcileMeliPublicationsStatusSummary,
 } from 'src/core/interactors/reconciliation/ReconcileMeliPublicationsStatus';
+import {
+  TriggerManualSkuSync,
+  TriggerManualSkuSyncInput,
+  TriggerManualSkuSyncSummary,
+} from 'src/core/interactors/manual-sync/TriggerManualSkuSync';
 import type {
   CreatePublisherJobRequest,
   CreatePublisherJobResponse,
@@ -32,6 +37,7 @@ export class PublisherService {
     private readonly publisherQueue: PublisherQueueService,
     private readonly syncMarketplacePublicationsCatalog: SyncMarketplacePublicationsCatalog,
     private readonly reconcileMeliPublicationsStatus: ReconcileMeliPublicationsStatus,
+    private readonly triggerManualSkuSyncInteractor: TriggerManualSkuSync,
   ) {}
 
   async createJob(
@@ -88,5 +94,11 @@ export class PublisherService {
 
   async runMeliReconciliation(): Promise<ReconcileMeliPublicationsStatusSummary> {
     return this.reconcileMeliPublicationsStatus.execute('manual');
+  }
+
+  async triggerManualSkuSync(
+    input: TriggerManualSkuSyncInput,
+  ): Promise<TriggerManualSkuSyncSummary> {
+    return this.triggerManualSkuSyncInteractor.execute(input);
   }
 }

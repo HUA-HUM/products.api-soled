@@ -31,6 +31,7 @@ import { OpenAIAttributesExtractor } from 'src/core/drivers/repositories/openAi/
 import { OpenAIDescriptionGenerator } from 'src/core/drivers/repositories/openAi/OpenAIDescriptionGenerator';
 import { SyncMarketplacePublicationsCatalog } from 'src/core/interactors/import-marketplaces/SyncMarketplacePublicationsCatalog';
 import { ReconcileMeliPublicationsStatus } from 'src/core/interactors/reconciliation/ReconcileMeliPublicationsStatus';
+import { TriggerManualSkuSync } from 'src/core/interactors/manual-sync/TriggerManualSkuSync';
 import { ResolveProductDescription } from 'src/core/interactors/publisher/shared/ResolveProductDescription';
 import { MarketplaceChangeActionRepository } from 'src/core/drivers/repositories/internal-soled/marketplace-change-actions/MarketplaceChangeActionRepository';
 import { GetDetailsProductsBulkRepository } from 'src/core/drivers/repositories/meli-api/detailsProductsBulk/GetDetailsProductsBulkRepository';
@@ -66,6 +67,7 @@ import { ResolveMeliPackageDimensions } from 'src/core/interactors/publisher/sha
     UpdatePublisherRunRepository,
     SyncMarketplacePublicationsCatalog,
     ReconcileMeliPublicationsStatus,
+    TriggerManualSkuSync,
     MarketplaceChangeActionRepository,
     MarketplaceChangeActionsQueueService,
     GetDetailsProductsBulkRepository,

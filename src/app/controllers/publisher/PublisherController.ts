@@ -18,8 +18,10 @@ import type {
 import type { RetryPublisherRunResponse } from 'src/core/entitis/internal-soled/publisher/PublisherRun';
 import type { SyncMarketplacePublicationsCatalogSummary } from 'src/core/interactors/import-marketplaces/SyncMarketplacePublicationsCatalog';
 import type { ReconcileMeliPublicationsStatusSummary } from 'src/core/interactors/reconciliation/ReconcileMeliPublicationsStatus';
+import type { TriggerManualSkuSyncSummary } from 'src/core/interactors/manual-sync/TriggerManualSkuSync';
 import { CreatePublisherJobDto } from './dto/CreatePublisherJobDto';
 import { SyncMarketplacePublicationsCatalogDto } from './dto/SyncMarketplacePublicationsCatalogDto';
+import { TriggerManualSkuSyncDto } from './dto/TriggerManualSkuSyncDto';
 
 @ApiTags('Publisher')
 @Controller('publisher')
@@ -164,6 +166,41 @@ export class PublisherController {
   })
   async runMeliReconciliation(): Promise<ReconcileMeliPublicationsStatusSummary> {
     return this.publisherService.runMeliReconciliation();
+  }
+
+  @Post('marketplace-publications/:sku/sync')
+  @ApiOperation({
+    summary: 'Forzar sincronizacion de precio/stock/status de un sku puntual',
+    description:
+      'Consulta el estado real de un sku en MELI y encola, via el mismo pipeline de change-actions que usan el webhook y la reconciliacion, la actualizacion de precio/stock/status en Fravega y/o OnCity. Solo actualiza marketplaces donde ya exista una publicacion registrada.',
+  })
+  @ApiParam({ name: 'sku', example: 'JDXU1307' })
+  @ApiBody({ type: TriggerManualSkuSyncDto, required: false })
+  @ApiOkResponse({
+    description: 'Resumen de la sincronizacion manual encolada.',
+    schema: {
+      example: {
+        sku: 'JDXU1307',
+        meliItemId: 'MLA1927649109',
+        meliStatus: 'active',
+        isFulfillment: false,
+        actionsQueued: 3,
+        marketplacesQueued: ['fravega'],
+        skippedMarketplaces: [
+          { marketplace: 'oncity', reason: 'NO_PUBLICATION_FOUND: ...' },
+        ],
+      },
+    },
+  })
+  async triggerManualSkuSync(
+    @Param('sku') sku: string,
+    @Body() body: TriggerManualSkuSyncDto = {},
+  ): Promise<TriggerManualSkuSyncSummary> {
+    return this.publisherService.triggerManualSkuSync({
+      sku,
+      marketplaces: body.marketplaces,
+      fields: body.fields,
+    });
   }
 
   private parseNumber(value: string | undefined): number | undefined {
