@@ -3,6 +3,7 @@ import { GetDetailsProductsRepository } from 'src/core/drivers/repositories/meli
 import { PostMeliProductRepository } from 'src/core/drivers/repositories/internal-soled/meli-products/insert/PostMeliProductRepository';
 import type { GetDetailsProductsResponse } from 'src/core/entitis/meli-api/detailsProducts/GetDetailsProductsResponse';
 import type { PostMeliProductPayload } from 'src/core/entitis/internal-soled/meli-products/insert/PostMeliProduct';
+import { extractMeliInstallments } from 'src/core/interactors/shared/ExtractMeliInstallments';
 
 type RawMeliPicture = {
   id?: unknown;
@@ -151,6 +152,7 @@ export class ImportWebHookChanges {
       pictures: this.mapPictures(product),
       video_id: product.video_id,
       logistic_type: product.logistic_type,
+      ...extractMeliInstallments(product.raw_payload),
       shipping_mode: product.shipping_mode,
       free_shipping: product.free_shipping,
       local_pick_up: product.local_pick_up,
