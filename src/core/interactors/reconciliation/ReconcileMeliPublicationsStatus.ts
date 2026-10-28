@@ -20,6 +20,8 @@ const PUBLISHED_STATUS = 'published';
 // Mismo tamano de lote que ya usa ImportAllProdcutsFromMeli contra el mismo
 // endpoint bulk de MELI (probado en produccion); no asumir un limite propio.
 const MELI_BULK_CHUNK_SIZE = 10;
+const PUBLICATIONS_PAGE_SIZE = 200;
+const MAX_PUBLICATION_PAGES = 50;
 const RECONCILIABLE_MARKETPLACES = new Set<PublisherMarketplace>([
   'oncity',
   'fravega',
@@ -123,20 +125,58 @@ export class ReconcileMeliPublicationsStatus {
   private async fetchActivePublications(): Promise<
     MarketplacePublicationResponse[]
   > {
-    // GET /internal/marketplace-publications solo filtra por sku (y no
-    // pagina): sin sku devuelve la tabla entera. Pedirle marketplace/status
-    // aca no hace nada del lado del servidor, asi que traemos todo en una
-    // sola llamada y filtramos en memoria en vez de asumir soporte de
-    // filtros/paginacion que hoy no existe (evita loop infinito).
-    const page = await this.marketplacePublications.list();
+    // internal-soled pagina siempre (sin limit devuelve solo 200 filas de toda
+    // la tabla), asi que se pide por marketplace + status y se recorre con
+    // offset. Se deduplica por id (el orden es updated_at y puede moverse
+    // mientras corre el barrido) y hay tope de paginas para no loopear si el
+    // servidor ignorara offset.
+    const byKey = new Map<string, MarketplacePublicationResponse>();
 
-    return page.items.filter((publication) => {
-      const marketplace = publication.marketplace;
+    for (const marketplace of RECONCILIABLE_MARKETPLACES) {
+      let offset = 0;
+      let reachedEnd = false;
+
+      for (let page = 0; page < MAX_PUBLICATION_PAGES; page += 1) {
+        const result = await this.marketplacePublications.list({
+          marketplace,
+          status: PUBLISHED_STATUS,
+          limit: PUBLICATIONS_PAGE_SIZE,
+          offset,
+        });
+
+        for (const publication of result.items) {
+          byKey.set(
+            String(
+              publication.id ?? `${publication.marketplace}:${publication.sku}`,
+            ),
+            publication,
+          );
+        }
+
+        offset += result.items.length;
+
+        if (
+          result.items.length < PUBLICATIONS_PAGE_SIZE ||
+          (result.pagination && offset >= result.pagination.total)
+        ) {
+          reachedEnd = true;
+          break;
+        }
+      }
+
+      if (!reachedEnd) {
+        this.logger.warn(
+          `[MELI-RECONCILIATION] Se alcanzo el tope de paginas, puede haber publicaciones sin revisar | marketplace=${marketplace} paginas=${MAX_PUBLICATION_PAGES}`,
+        );
+      }
+    }
+
+    return [...byKey.values()].filter((publication) => {
       const status =
         publication.publicationStatus ?? publication.publication_status;
 
       return (
-        RECONCILIABLE_MARKETPLACES.has(marketplace) &&
+        RECONCILIABLE_MARKETPLACES.has(publication.marketplace) &&
         status === PUBLISHED_STATUS
       );
     });

@@ -114,4 +114,9 @@ export type ListMarketplacePublicationsParams = {
 
 export type ListMarketplacePublicationsResponse = {
   items: MarketplacePublicationResponse[];
+  pagination?: {
+    limit: number;
+    offset: number;
+    total: number;
+  };
 };
