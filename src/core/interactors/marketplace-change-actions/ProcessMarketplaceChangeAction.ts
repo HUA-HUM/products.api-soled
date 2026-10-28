@@ -267,12 +267,16 @@ export class ProcessMarketplaceChangeAction {
       return null;
     }
 
+    const attributes = this.normalizeOncityAttributes(
+      product.ProductSpecifications,
+    );
+
     if (
-      !this.hasValidOncitySpecShape(product.ProductSpecifications) ||
+      !attributes ||
       !this.hasValidOncitySpecShape(product.SkuSpecifications)
     ) {
       this.logger.warn(
-        `[MARKETPLACE-CHANGE] OnCity ProductSpecifications/SkuSpecifications en un formato no reconocido (no son objetos {Name, Value}) | sku=${action.sku} skuId=${skuId}. Se omite el status update para no mandar un payload invalido a un PUT que reemplaza el producto entero (podria borrar specs reales).`,
+        `[MARKETPLACE-CHANGE] OnCity ProductSpecifications/SkuSpecifications en un formato no reconocido | sku=${action.sku} skuId=${skuId}. Se omite el status update para no mandar un payload invalido a un PUT que reemplaza el producto entero (podria borrar specs reales).`,
       );
 
       return null;
@@ -297,7 +301,7 @@ export class ProcessMarketplaceChangeAction {
       brandId: String(product.BrandId ?? ''),
       categoryIds: this.resolveOncityCategoryIds(product, publication),
       specs: this.arrayOrEmpty(product.SkuSpecifications),
-      attributes: this.arrayOrEmpty(product.ProductSpecifications),
+      attributes,
       slug: String(
         product.DetailUrl ??
           publication.externalUrl ??
@@ -305,7 +309,12 @@ export class ProcessMarketplaceChangeAction {
           '',
       ),
       images: resolvedImages,
-      skus: this.resolveOncitySkus(product, publication, active, resolvedImages),
+      skus: this.resolveOncitySkus(
+        product,
+        publication,
+        active,
+        resolvedImages,
+      ),
       origin: String(process.env.ONCITY_VTEX_ACCOUNT ?? DEFAULT_ONCITY_ACCOUNT),
     };
   }
@@ -453,6 +462,40 @@ export class ProcessMarketplaceChangeAction {
     return Array.isArray(value) ? value : [];
   }
 
+  // El raw de VTEX trae ProductSpecifications como {FieldName, FieldValues[]}
+  // pero el PUT del seller portal espera attributes {name, value}. Devuelve
+  // null si algun item no se puede mapear con certeza (no adivinamos).
+  private normalizeOncityAttributes(items: unknown): any[] | null {
+    const normalized: any[] = [];
+
+    for (const item of this.arrayOrEmpty(items)) {
+      if (!item || typeof item !== 'object') {
+        return null;
+      }
+
+      const record = item as Record<string, any>;
+      const name = record.FieldName ?? record.Name ?? record.name;
+      const rawValue = record.FieldValues ?? record.Value ?? record.value;
+      const value = Array.isArray(rawValue)
+        ? rawValue.filter((v) => v !== null && v !== undefined).join(', ')
+        : rawValue;
+
+      if (
+        typeof name !== 'string' ||
+        !name ||
+        value === null ||
+        value === undefined ||
+        String(value) === ''
+      ) {
+        return null;
+      }
+
+      normalized.push({ name, value: String(value) });
+    }
+
+    return normalized;
+  }
+
   // OnCity devuelve 400 ModelStateInvalidException si mandamos specs/attributes
   // que no sean objetos {Name, Value} (ej. VTEX a veces trae ProductSpecifications
   // como array de strings sueltos). No hay forma segura de adivinar el mapeo sin
@@ -467,10 +510,7 @@ export class ProcessMarketplaceChangeAction {
 
     return arr.every(
       (item) =>
-        item &&
-        typeof item === 'object' &&
-        'Name' in item &&
-        'Value' in item,
+        item && typeof item === 'object' && 'Name' in item && 'Value' in item,
     );
   }
 
