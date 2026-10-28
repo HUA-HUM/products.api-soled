@@ -55,7 +55,7 @@ export class MarketplaceChangeActionsProcessor extends WorkerHost {
       if (result.status === 'skipped') {
         await this.actionsRepository.skip(actionId, {
           reason: result.reason ?? 'SKIPPED',
-          responseSnapshot: result.responseSnapshot,
+          responseSnapshot: this.toSnapshot(result.responseSnapshot),
         });
         return;
       }
@@ -75,8 +75,10 @@ export class MarketplaceChangeActionsProcessor extends WorkerHost {
         attempts,
         errorCode,
         errorMessage,
-        requestSnapshot: error?.requestSnapshot,
-        responseSnapshot: error?.body ?? error?.response?.data ?? error,
+        requestSnapshot: this.toSnapshot(error?.requestSnapshot),
+        responseSnapshot: this.toSnapshot(
+          error?.body ?? error?.response?.data ?? error,
+        ),
       });
 
       this.logger.error(
@@ -101,8 +103,8 @@ export class MarketplaceChangeActionsProcessor extends WorkerHost {
   ): Promise<void> {
     try {
       await this.actionsRepository.complete(actionId, {
-        requestSnapshot: result.requestSnapshot,
-        responseSnapshot: result.responseSnapshot,
+        requestSnapshot: this.toSnapshot(result.requestSnapshot),
+        responseSnapshot: this.toSnapshot(result.responseSnapshot),
       });
       return;
     } catch (error: any) {
@@ -118,6 +120,17 @@ export class MarketplaceChangeActionsProcessor extends WorkerHost {
         `[MARKETPLACE-CHANGE-ALERT] Change applied but action could not be marked completed | actionId=${actionId} error=${error?.message ?? String(error)}`,
       );
     }
+  }
+
+  // internal-soled guarda los snapshots en columnas JSON y manda los strings
+  // tal cual (sin serializarlos): una respuesta vacia o en texto plano (ej. el
+  // PUT de OnCity) llega como JSON invalido y el endpoint devuelve 500.
+  private toSnapshot(value: unknown): unknown {
+    if (typeof value === 'string') {
+      return value.trim() ? { raw: value } : undefined;
+    }
+
+    return value;
   }
 
   private async markPublicationOutOfSync(
