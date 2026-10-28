@@ -12,8 +12,11 @@ import type {
 } from 'src/core/entitis/internal-soled/publisher/MarketplacePublication';
 import { TrackProcessRun } from 'src/core/interactors/shared/TrackProcessRun';
 import type { ProcessRunTriggerType } from 'src/core/entitis/internal-soled/process-runs/ProcessRun';
+import { sanitizeFravegaRefId } from 'src/core/interactors/publisher/fravega/payload/sanitizeFravegaRefId';
 
 const PROCESS_NAME = 'marketplace_publications_sync';
+const KEY_INDEX_PAGE_SIZE = 200;
+const MAX_KEY_INDEX_PAGES = 50;
 
 type SupportedMarketplace = 'oncity' | 'fravega';
 
@@ -136,6 +139,7 @@ export class SyncMarketplacePublicationsCatalog {
     SyncMarketplacePublicationsCatalogSummary['marketplaces'][number]
   > {
     const summary = this.buildMarketplaceSummary('fravega');
+    const keyIndex = await this.loadFravegaKeyIndex();
     let offset = 0;
 
     while (true) {
@@ -162,9 +166,14 @@ export class SyncMarketplacePublicationsCatalog {
             continue;
           }
 
+          // Fravega devuelve el refId sin espacios ni simbolos ("KT22") pero
+          // las filas creadas al publicar usan el SKU original ("KT 22"):
+          // se actualiza esa fila en vez de crear un duplicado.
+          const existingKey = keyIndex.get(sanitizeFravegaRefId(product.refId));
+
           await this.marketplacePublication.upsert(
             'fravega',
-            product.refId,
+            existingKey ?? product.refId,
             this.mapFravegaPublication(product),
           );
 
@@ -185,6 +194,52 @@ export class SyncMarketplacePublicationsCatalog {
     }
 
     return summary;
+  }
+
+  // refId sanitizado -> clave real de la fila existente en Fravega. Si hay mas
+  // de una fila para el mismo refId se prefiere la que ya tiene meli_item_id.
+  private async loadFravegaKeyIndex(): Promise<Map<string, string>> {
+    const index = new Map<string, { sku: string; hasMla: boolean }>();
+    let offset = 0;
+    let reachedEnd = false;
+
+    for (let page = 0; page < MAX_KEY_INDEX_PAGES; page += 1) {
+      const result = await this.marketplacePublication.list({
+        marketplace: 'fravega',
+        limit: KEY_INDEX_PAGE_SIZE,
+        offset,
+      });
+
+      for (const publication of result.items) {
+        const key = sanitizeFravegaRefId(publication.sku);
+        const hasMla = Boolean(
+          publication.meliItemId ?? publication.meli_item_id,
+        );
+        const current = index.get(key);
+
+        if (!current || (hasMla && !current.hasMla)) {
+          index.set(key, { sku: publication.sku, hasMla });
+        }
+      }
+
+      offset += result.items.length;
+
+      if (
+        result.items.length < KEY_INDEX_PAGE_SIZE ||
+        (result.pagination && offset >= result.pagination.total)
+      ) {
+        reachedEnd = true;
+        break;
+      }
+    }
+
+    if (!reachedEnd) {
+      this.logger.warn(
+        `[CATALOG-SYNC] Fravega key index truncated at ${MAX_KEY_INDEX_PAGES} pages, duplicates may be created`,
+      );
+    }
+
+    return new Map([...index].map(([key, value]) => [key, value.sku]));
   }
 
   private async getOncityRawProduct(
