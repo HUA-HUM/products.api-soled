@@ -14,6 +14,7 @@ import { GetDetailsProductsRepository } from 'src/core/drivers/repositories/meli
 import { GetDetailsProductsBulkRepository } from 'src/core/drivers/repositories/meli-api/detailsProductsBulk/GetDetailsProductsBulkRepository';
 import { MeliHttpClient } from 'src/core/drivers/repositories/meli-api/http/MeliHttpClient';
 import { InteranlSoledHttpClient } from 'src/core/drivers/repositories/internal-soled/http/InteranlSoledHttpClient';
+import { GetMeliProductBySkuRepository } from 'src/core/drivers/repositories/internal-soled/meli-products/get-by-sku/GetMeliProductBySkuRepository';
 import { GetMeliProductByMlaRepository } from 'src/core/drivers/repositories/internal-soled/meli-products/get-by-mla/GetMeliProductByMlaRepository';
 import { PostMeliProductRepository } from 'src/core/drivers/repositories/internal-soled/meli-products/insert/PostMeliProductRepository';
 import { MarketplaceHttpClient } from 'src/core/drivers/repositories/marketplace-api/http/MarketplaceHttpClient';
@@ -51,6 +52,7 @@ import { TrackProcessRun } from 'src/core/interactors/shared/TrackProcessRun';
     MarketplaceChangeActionRepository,
     MarketplacePublicationRepository,
     GetMeliProductByMlaRepository,
+    GetMeliProductBySkuRepository,
     GetDetailsProductsRepository,
     GetDetailsProductsBulkRepository,
     PostMeliProductRepository,

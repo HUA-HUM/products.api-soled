@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { MarketplaceChangeActionsQueueService } from 'src/app/services/marketplace-change-actions/marketplace-change-actions-queue.service';
 import { MarketplaceChangeActionRepository } from 'src/core/drivers/repositories/internal-soled/marketplace-change-actions/MarketplaceChangeActionRepository';
 import { MarketplacePublicationRepository } from 'src/core/drivers/repositories/internal-soled/marketplace-publications/MarketplacePublicationRepository';
+import { GetMeliProductBySkuRepository } from 'src/core/drivers/repositories/internal-soled/meli-products/get-by-sku/GetMeliProductBySkuRepository';
 import { GetDetailsProductsBulkRepository } from 'src/core/drivers/repositories/meli-api/detailsProductsBulk/GetDetailsProductsBulkRepository';
 import { TrackProcessRun } from 'src/core/interactors/shared/TrackProcessRun';
 import type { CreateMarketplaceChangeAction } from 'src/core/entitis/internal-soled/marketplace-change-actions/MarketplaceChangeAction';
@@ -46,6 +47,7 @@ export class ReconcileMeliPublicationsStatus {
     private readonly changeActions: MarketplaceChangeActionRepository,
     private readonly changeActionsQueue: MarketplaceChangeActionsQueueService,
     private readonly trackProcessRun: TrackProcessRun,
+    private readonly getMeliProductBySku: GetMeliProductBySkuRepository,
   ) {}
 
   async execute(
@@ -57,7 +59,9 @@ export class ReconcileMeliPublicationsStatus {
   }
 
   private async runReconciliation(): Promise<ReconcileMeliPublicationsStatusSummary> {
-    const publications = await this.fetchActivePublications();
+    const publications = await this.withResolvedMeliItemIds(
+      await this.fetchActivePublications(),
+    );
     const publicationsByMla = this.groupByMeliItemId(publications);
     const meliItemIds = [...publicationsByMla.keys()];
 
@@ -136,6 +140,54 @@ export class ReconcileMeliPublicationsStatus {
         status === PUBLISHED_STATUS
       );
     });
+  }
+
+  // Las publicaciones que entran por el sync de catalogo (source=marketplace)
+  // pueden venir sin meli_item_id y groupByMeliItemId las descartaria, dejando
+  // esos SKUs fuera del chequeo de Full. Se resuelve el MLA por SKU.
+  private async withResolvedMeliItemIds(
+    publications: MarketplacePublicationResponse[],
+  ): Promise<MarketplacePublicationResponse[]> {
+    const mlaBySku = new Map<string, string | null>();
+    let unresolved = 0;
+
+    const resolved: MarketplacePublicationResponse[] = [];
+
+    for (const publication of publications) {
+      if (publication.meliItemId ?? publication.meli_item_id) {
+        resolved.push(publication);
+        continue;
+      }
+
+      if (!mlaBySku.has(publication.sku)) {
+        try {
+          const product = await this.getMeliProductBySku.getBySku(
+            publication.sku,
+          );
+          mlaBySku.set(publication.sku, product.meli_item_id ?? null);
+        } catch {
+          mlaBySku.set(publication.sku, null);
+        }
+      }
+
+      const meliItemId = mlaBySku.get(publication.sku) ?? null;
+
+      if (!meliItemId) {
+        unresolved += 1;
+        resolved.push(publication);
+        continue;
+      }
+
+      resolved.push({ ...publication, meliItemId });
+    }
+
+    if (unresolved) {
+      this.logger.warn(
+        `[MELI-RECONCILIATION] Publicaciones sin MLA resoluble por SKU, quedan fuera del chequeo | cantidad=${unresolved}`,
+      );
+    }
+
+    return resolved;
   }
 
   private groupByMeliItemId(
