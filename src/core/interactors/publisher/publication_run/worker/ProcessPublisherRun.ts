@@ -40,7 +40,7 @@ export class ProcessPublisherRun {
       run.sku,
     );
 
-    if (existingPublication) {
+    if (existingPublication && this.isExistingListing(existingPublication)) {
       await this.updatePublisherRun.updateSnapshots(runId, {
         responseSnapshot: existingPublication,
       });
@@ -291,6 +291,37 @@ export class ProcessPublisherRun {
   private numberOrNull(value: unknown): number | null {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  // Una fila en marketplace_product_publications no siempre es una publicacion
+  // real: un intento fallido o rechazado deja filas en error/rejected/draft y
+  // tratarlas como "ya existe" hacia que todo reintento terminara omitido para
+  // siempre. Solo cuenta como existente si esta viva, o si esta en error pero
+  // ya tiene id en el retailer (recrearla duplicaria el producto).
+  private isExistingListing(publication: {
+    publicationStatus?: string;
+    publication_status?: string;
+    externalProductId?: string | null;
+    external_product_id?: string | null;
+  }): boolean {
+    const status =
+      publication.publicationStatus ?? publication.publication_status;
+    const notLive = [
+      'draft',
+      'pending_publish',
+      'rejected',
+      'error',
+      'deleted',
+    ];
+
+    if (!status || !notLive.includes(status)) {
+      return true;
+    }
+
+    const externalId =
+      publication.externalProductId ?? publication.external_product_id;
+
+    return status === 'error' && Boolean(externalId);
   }
 
   private async findExistingPublication(marketplace: string, sku: string) {

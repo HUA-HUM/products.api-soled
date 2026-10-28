@@ -83,7 +83,12 @@ export class PublisherService {
   }
 
   async retryRun(runId: string): Promise<RetryPublisherRunResponse> {
-    return this.updatePublisherRun.retry(runId);
+    const response = await this.updatePublisherRun.retry(runId);
+    const enqueuedRun = await this.publisherQueue.requeueRun(runId);
+
+    void this.persistBullmqJobIds([enqueuedRun]);
+
+    return response;
   }
 
   async syncMarketplacePublications(

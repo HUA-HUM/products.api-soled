@@ -45,16 +45,7 @@ export class PublisherQueueService {
       runnableItems.map((item) => ({
         name: PUBLISHER_RUN_JOB_NAME,
         data: { runId: item.runId },
-        opts: {
-          jobId: item.runId,
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 30000,
-          },
-          removeOnComplete: 1000,
-          removeOnFail: 5000,
-        },
+        opts: this.buildJobOptions(item.runId),
       })),
     );
 
@@ -66,6 +57,47 @@ export class PublisherQueueService {
       runId: String(job.data.runId),
       bullmqJobId: String(job.id),
     }));
+  }
+
+  // El retry de internal-soled solo marca el run como queued en la base; el
+  // job de BullMQ lo manejamos nosotros. Como se reutiliza el jobId (= runId)
+  // y BullMQ ignora un add() si ya existe un job terminado con ese id, hay que
+  // sacar el job viejo antes de volver a encolar.
+  async requeueRun(runId: string): Promise<EnqueuedPublisherRun> {
+    const existing = await this.publisherRunsQueue.getJob(runId);
+
+    if (existing) {
+      const state = await existing.getState();
+
+      if (['active', 'waiting', 'delayed', 'prioritized'].includes(state)) {
+        return { runId, bullmqJobId: String(existing.id) };
+      }
+
+      await existing.remove();
+    }
+
+    const job = await this.publisherRunsQueue.add(
+      PUBLISHER_RUN_JOB_NAME,
+      { runId },
+      this.buildJobOptions(runId),
+    );
+
+    this.logger.log(`[PUBLISHER-QUEUE] Run re-enqueued | runId=${runId}`);
+
+    return { runId, bullmqJobId: String(job.id) };
+  }
+
+  private buildJobOptions(runId: string) {
+    return {
+      jobId: runId,
+      attempts: 3,
+      backoff: {
+        type: 'exponential' as const,
+        delay: 30000,
+      },
+      removeOnComplete: 1000,
+      removeOnFail: 5000,
+    };
   }
 
   private getRunId(item: PublisherJobItem): string | undefined {
