@@ -32,6 +32,7 @@ import { ReconcileMeliPublicationsStatus } from 'src/core/interactors/reconcilia
 import { ImportWebHookChanges } from 'src/core/interactors/webhook/importWebHookChanges';
 import { ProcessRunsRepository } from 'src/core/drivers/repositories/internal-soled/process-runs/ProcessRunsRepository';
 import { TrackProcessRun } from 'src/core/interactors/shared/TrackProcessRun';
+import { FindPublicationsForMeliSku } from 'src/core/interactors/shared/FindPublicationsForMeliSku';
 
 @Module({
   imports: [PublisherQueueModule],
@@ -47,6 +48,7 @@ import { TrackProcessRun } from 'src/core/interactors/shared/TrackProcessRun';
     ImportWebHookChanges,
     ProcessMarketplaceChangeAction,
     ReconcileMeliPublicationsStatus,
+    FindPublicationsForMeliSku,
     ProcessRunsRepository,
     TrackProcessRun,
     MarketplaceChangeActionRepository,

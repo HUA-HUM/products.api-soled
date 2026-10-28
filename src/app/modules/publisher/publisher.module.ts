@@ -52,6 +52,7 @@ import { ResolveOnCityPrices } from 'src/core/interactors/publisher/oncity/price
 import { PublishOncityProduct } from 'src/core/interactors/publisher/oncity/PublishOncityProduct';
 import { ProcessPublisherRun } from 'src/core/interactors/publisher/publication_run/worker/ProcessPublisherRun';
 import { ResolveMeliPackageDimensions } from 'src/core/interactors/publisher/shared/ResolveMeliPackageDimensions';
+import { FindPublicationsForMeliSku } from 'src/core/interactors/shared/FindPublicationsForMeliSku';
 
 @Module({
   imports: [PublisherQueueModule],
@@ -68,6 +69,7 @@ import { ResolveMeliPackageDimensions } from 'src/core/interactors/publisher/sha
     SyncMarketplacePublicationsCatalog,
     ReconcileMeliPublicationsStatus,
     TriggerManualSkuSync,
+    FindPublicationsForMeliSku,
     MarketplaceChangeActionRepository,
     MarketplaceChangeActionsQueueService,
     GetDetailsProductsBulkRepository,

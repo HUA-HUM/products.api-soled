@@ -16,6 +16,7 @@ import type {
 import type { InternalMeliProduct } from 'src/core/entitis/internal-soled/meli-products/get/MeliProduct';
 import type { MarketplacePublicationResponse } from 'src/core/entitis/internal-soled/publisher/MarketplacePublication';
 import { ImportWebHookChanges } from 'src/core/interactors/webhook/importWebHookChanges';
+import { FindPublicationsForMeliSku } from 'src/core/interactors/shared/FindPublicationsForMeliSku';
 
 const CANONICAL_LISTING_TYPE_ID = 'gold_special';
 const MELI_FULFILLMENT_LOGISTIC_TYPE = 'fulfillment';
@@ -37,6 +38,7 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
     private readonly marketplacePublications: MarketplacePublicationRepository,
     private readonly changeActions: MarketplaceChangeActionRepository,
     private readonly changeActionsQueue: MarketplaceChangeActionsQueueService,
+    private readonly findPublicationsForMeliSku: FindPublicationsForMeliSku,
   ) {
     super();
   }
@@ -83,16 +85,14 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
       );
     }
 
-    const publications = await this.marketplacePublications.list({
-      sku: newProduct.sku ?? undefined,
-      limit: 100,
-      offset: 0,
-    });
+    const publications = newProduct.sku
+      ? await this.findPublicationsForMeliSku.execute(newProduct.sku)
+      : [];
     const actions = this.buildActions(
       newProduct,
       oldProduct,
       changes,
-      publications.items,
+      publications,
       isFulfillment ? FULFILLMENT_PAUSE_SOURCE : 'mercadolibre_webhook',
     );
 
@@ -224,9 +224,7 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
     publications: MarketplacePublicationResponse[],
     source: string,
   ): CreateMarketplaceChangeAction[] {
-    const sku = newProduct.sku;
-
-    if (!sku) {
+    if (!newProduct.sku) {
       return [];
     }
 
@@ -235,6 +233,8 @@ export class MercadoLibreWebhookEventsProcessor extends WorkerHost {
       .flatMap((publication) =>
         changes.map((change) => {
           const dedupeValue = JSON.stringify(change.newValue);
+          // La clave de la fila (puede diferir del SKU de MELI en Fravega).
+          const sku = publication.sku;
 
           return {
             actionId: `chg_${Date.now()}_${randomUUID().slice(0, 8)}`,

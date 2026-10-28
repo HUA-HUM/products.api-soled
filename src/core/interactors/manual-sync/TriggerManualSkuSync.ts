@@ -11,6 +11,7 @@ import type {
 } from 'src/core/entitis/internal-soled/marketplace-change-actions/MarketplaceChangeAction';
 import type { MarketplacePublicationResponse } from 'src/core/entitis/internal-soled/publisher/MarketplacePublication';
 import type { InternalMeliProduct } from 'src/core/entitis/internal-soled/meli-products/get/MeliProduct';
+import { FindPublicationsForMeliSku } from 'src/core/interactors/shared/FindPublicationsForMeliSku';
 
 const MANUAL_SYNC_SOURCE = 'manual_sku_sync';
 const FULFILLMENT_LOGISTIC_TYPE = 'fulfillment';
@@ -52,6 +53,7 @@ export class TriggerManualSkuSync {
     private readonly marketplacePublications: MarketplacePublicationRepository,
     private readonly changeActions: MarketplaceChangeActionRepository,
     private readonly changeActionsQueue: MarketplaceChangeActionsQueueService,
+    private readonly findPublicationsForMeliSku: FindPublicationsForMeliSku,
   ) {}
 
   async execute(
@@ -64,11 +66,7 @@ export class TriggerManualSkuSync {
     const requestedFields = input.fields?.length ? input.fields : ALL_FIELDS;
 
     const meliProduct = await this.getMeliProductBySku.getBySku(sku);
-    const publications = await this.marketplacePublications.list({
-      sku,
-      limit: 100,
-      offset: 0,
-    });
+    const publications = await this.findPublicationsForMeliSku.execute(sku);
 
     const isFulfillment =
       meliProduct.logistic_type === FULFILLMENT_LOGISTIC_TYPE;
@@ -79,7 +77,7 @@ export class TriggerManualSkuSync {
     const actions: CreateMarketplaceChangeAction[] = [];
 
     for (const marketplace of requestedMarketplaces) {
-      const publication = publications.items.find(
+      const publication = publications.find(
         (item) => item.marketplace === marketplace,
       );
 
@@ -94,7 +92,7 @@ export class TriggerManualSkuSync {
 
       actions.push(
         ...this.buildActionsForPublication(
-          sku,
+          publication.sku,
           meliProduct,
           publication,
           shouldBePaused,
@@ -132,7 +130,8 @@ export class TriggerManualSkuSync {
     isFulfillment: boolean,
     requestedFields: MarketplaceChangeActionType[],
   ): CreateMarketplaceChangeAction[] {
-    const marketplace = publication.marketplace as MarketplaceChangeActionMarketplace;
+    const marketplace =
+      publication.marketplace as MarketplaceChangeActionMarketplace;
     const changes: Array<{
       type: MarketplaceChangeActionType;
       newValue: Record<string, unknown>;
