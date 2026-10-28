@@ -60,10 +60,7 @@ export class MarketplaceChangeActionsProcessor extends WorkerHost {
         return;
       }
 
-      await this.actionsRepository.complete(actionId, {
-        requestSnapshot: result.requestSnapshot,
-        responseSnapshot: result.responseSnapshot,
-      });
+      await this.completeAction(actionId, result);
     } catch (error: any) {
       const isLastAttempt = attempts >= (job.opts.attempts ?? 1);
 
@@ -91,6 +88,34 @@ export class MarketplaceChangeActionsProcessor extends WorkerHost {
         action,
         errorCode,
         errorMessage,
+      );
+    }
+  }
+
+  // El cambio ya se aplico en el retailer: si solo falla registrar el cierre
+  // (p.ej. snapshots muy grandes), no hay que tratar la accion como fallida
+  // ni marcar la publicacion en error ni reintentar el cambio.
+  private async completeAction(
+    actionId: string,
+    result: { requestSnapshot?: unknown; responseSnapshot?: unknown },
+  ): Promise<void> {
+    try {
+      await this.actionsRepository.complete(actionId, {
+        requestSnapshot: result.requestSnapshot,
+        responseSnapshot: result.responseSnapshot,
+      });
+      return;
+    } catch (error: any) {
+      this.logger.warn(
+        `[MARKETPLACE-CHANGE] Could not store snapshots on complete, retrying without them | actionId=${actionId} error=${error?.message ?? String(error)}`,
+      );
+    }
+
+    try {
+      await this.actionsRepository.complete(actionId, {});
+    } catch (error: any) {
+      this.logger.error(
+        `[MARKETPLACE-CHANGE-ALERT] Change applied but action could not be marked completed | actionId=${actionId} error=${error?.message ?? String(error)}`,
       );
     }
   }

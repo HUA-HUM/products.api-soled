@@ -105,7 +105,7 @@ export class InteranlSoledHttpClient {
       return new InteranlSoledHttpError(
         err.response.status,
         err.response.data,
-        `[InteranlSoled ${method}] ${url}`,
+        `[InteranlSoled ${method}] ${url} -> ${err.response.status} ${this.summarize(err.response.data)}`,
       );
     }
 
@@ -117,8 +117,14 @@ export class InteranlSoledHttpClient {
         baseURL: this.client.defaults.baseURL,
         url,
       },
-      `[InteranlSoled ${method}] ${url}`,
+      `[InteranlSoled ${method}] ${url} -> sin respuesta (${err.code ?? 'ERR'}: ${err.message})`,
     );
+  }
+
+  private summarize(data: unknown): string {
+    const text = typeof data === 'string' ? data : JSON.stringify(data ?? '');
+
+    return text.length > 300 ? `${text.slice(0, 300)}...` : text;
   }
 
   private buildHeaders(
