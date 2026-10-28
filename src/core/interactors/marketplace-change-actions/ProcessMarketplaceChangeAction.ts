@@ -14,6 +14,7 @@ import type { MarketplaceChangeAction } from 'src/core/entitis/internal-soled/ma
 import type { MarketplacePublicationResponse } from 'src/core/entitis/internal-soled/publisher/MarketplacePublication';
 import type { OnCityRawProduct } from 'src/core/entitis/marketplace-api/oncity/products/get/OnCityRawProduct';
 import type { OnCityUpdateProductRequest } from 'src/core/entitis/marketplace-api/oncity/products/update-status/OnCityUpdateProductRequest';
+import { sanitizeFravegaRefId } from 'src/core/interactors/publisher/fravega/payload/sanitizeFravegaRefId';
 
 export type MarketplaceChangeActionProcessResult = {
   status: 'completed' | 'skipped';
@@ -179,11 +180,11 @@ export class ProcessMarketplaceChangeAction {
     action: MarketplaceChangeAction,
   ): Promise<MarketplaceChangeActionProcessResult> {
     // El refId que reconocen los endpoints /fravega/*/refId/... es el que
-    // nosotros mismos seteamos al publicar (nuestro sku, sanitizado en
-    // BuildFravegaPayload). publication.externalSku es el SKU INTERNO de
+    // nosotros mismos seteamos al publicar (nuestro sku, sanitizado igual que
+    // en BuildFravegaPayload: sin espacios ni simbolos). publication.externalSku es el SKU INTERNO de
     // Fravega (otro campo), no el refId; usarlo aca devuelve 404
     // ref_id_not_found en todas las actualizaciones de precio/stock/status.
-    const refId = action.sku;
+    const refId = sanitizeFravegaRefId(action.sku);
 
     if (action.changeType === 'price') {
       const price = this.getNumber(action.newValue.price);

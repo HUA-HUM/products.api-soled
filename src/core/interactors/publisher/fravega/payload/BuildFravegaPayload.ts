@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { IProcessMarketplaceImagesRepository } from 'src/core/adapters/repositories/image-market/IProcessMarketplaceImagesRepository';
 import type { InternalMeliProduct } from 'src/core/entitis/internal-soled/meli-products/get/MeliProduct';
 import { ResolveMeliPackageDimensions } from '../../shared/ResolveMeliPackageDimensions';
+import { sanitizeFravegaRefId } from './sanitizeFravegaRefId';
 
 @Injectable()
 export class BuildFravegaPayload {
@@ -35,7 +36,7 @@ export class BuildFravegaPayload {
              IDENTIFICACIÓN
           ====================================== */
           ean: this.resolveEan(product.gtin),
-          refId: this.sanitizeRefId(
+          refId: sanitizeFravegaRefId(
             String(product.sku ?? product.meli_item_id),
           ),
 
@@ -121,16 +122,6 @@ export class BuildFravegaPayload {
     }
 
     return normalized;
-  }
-
-  /* ======================================
-     REF ID (SIN TILDES NI CARACTERES ESPECIALES)
-  ====================================== */
-  private sanitizeRefId(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .replace(/[^a-zA-Z0-9_-]/g, '');
   }
 
   /* ======================================
